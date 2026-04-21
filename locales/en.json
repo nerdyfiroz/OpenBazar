@@ -1,0 +1,26 @@
+{
+  "nav": {
+    "home": "Home",
+    "about": "About",
+    "contact": "Contact",
+    "policies": "Policies"
+  },
+  "hero": {
+    "title": "Welcome to OpenBazar!",
+    "subtitle": "Your one-stop shop for everything."
+  },
+  "buttons": {
+    "buy": "Buy Now",
+    "sell": "Sell Now",
+    "submit": "Submit"
+  },
+  "form": {
+    "name": "Name",
+    "email": "Email",
+    "message": "Message"
+  },
+  "policies": {
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
+  }
+}

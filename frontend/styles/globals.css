@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-50 text-gray-900;
+}
+
+.input {
+  @apply w-full rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none ring-orange-300 transition focus:ring;
+}

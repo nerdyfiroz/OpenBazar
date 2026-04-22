@@ -17,15 +17,23 @@ export default function Home() {
       .catch(() => setProducts([]));
   }, []);
 
-  const flashSaleEndsIn = useMemo(() => {
-    const now = new Date();
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-    const diff = Math.max(0, end.getTime() - now.getTime());
-    const h = Math.floor(diff / (1000 * 60 * 60));
-    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const s = Math.floor((diff % (1000 * 60)) / 1000);
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  const [flashSaleEndsIn, setFlashSaleEndsIn] = useState('00:00:00');
+
+  useEffect(() => {
+    const updateTimer = () => {
+      const now = new Date();
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      const diff = Math.max(0, end.getTime() - now.getTime());
+      const h = Math.floor(diff / (1000 * 60 * 60));
+      const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((diff % (1000 * 60)) / 1000);
+      setFlashSaleEndsIn(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
+    };
+    
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
   }, []);
 
   const categories = [

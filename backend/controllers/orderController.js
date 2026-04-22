@@ -116,8 +116,25 @@ exports.placeOrder = async (req, res) => {
 
 exports.getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id }).populate('products.product');
-    res.json(orders);
+    const { page = 1, limit = 10 } = req.query;
+    const parsedPage = Math.max(Number(page) || 1, 1);
+    const parsedLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
+
+    const [orders, total] = await Promise.all([
+      Order.find({ user: req.user._id })
+        .populate('products.product')
+        .sort({ createdAt: -1 })
+        .skip((parsedPage - 1) * parsedLimit)
+        .limit(parsedLimit),
+      Order.countDocuments({ user: req.user._id })
+    ]);
+
+    res.json({
+      orders,
+      total,
+      page: parsedPage,
+      totalPages: Math.ceil(total / parsedLimit)
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -125,8 +142,25 @@ exports.getMyOrders = async (req, res) => {
 
 exports.getSellerOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ 'products.seller': req.user._id }).populate('products.product');
-    res.json(orders);
+    const { page = 1, limit = 10 } = req.query;
+    const parsedPage = Math.max(Number(page) || 1, 1);
+    const parsedLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
+
+    const [orders, total] = await Promise.all([
+      Order.find({ 'products.seller': req.user._id })
+        .populate('products.product')
+        .sort({ createdAt: -1 })
+        .skip((parsedPage - 1) * parsedLimit)
+        .limit(parsedLimit),
+      Order.countDocuments({ 'products.seller': req.user._id })
+    ]);
+    
+    res.json({
+      orders,
+      total,
+      page: parsedPage,
+      totalPages: Math.ceil(total / parsedLimit)
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -134,10 +168,26 @@ exports.getSellerOrders = async (req, res) => {
 
 exports.getAllOrdersAdmin = async (req, res) => {
   try {
-    const orders = await Order.find()
-      .populate('user', 'name email phone')
-      .populate('products.product', 'name');
-    res.json(orders);
+    const { page = 1, limit = 10 } = req.query;
+    const parsedPage = Math.max(Number(page) || 1, 1);
+    const parsedLimit = Math.min(Math.max(Number(limit) || 10, 1), 100);
+
+    const [orders, total] = await Promise.all([
+      Order.find()
+        .populate('user', 'name email phone')
+        .populate('products.product', 'name')
+        .sort({ createdAt: -1 })
+        .skip((parsedPage - 1) * parsedLimit)
+        .limit(parsedLimit),
+      Order.countDocuments()
+    ]);
+    
+    res.json({
+      orders,
+      total,
+      page: parsedPage,
+      totalPages: Math.ceil(total / parsedLimit)
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

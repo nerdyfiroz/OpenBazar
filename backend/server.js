@@ -10,16 +10,40 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? ['https://your-production-domain.com'] 
+    : ['http://localhost:3000', 'http://localhost:5000'],
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // Basic rate limiting
-app.use(rateLimit({ windowMs: 1 * 60 * 1000, max: 100 }));
+const limiter = rateLimit({ windowMs: 1 * 60 * 1000, max: 100 });
+app.use(limiter);
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('MongoDB connected'))
-  .catch((err) => console.error('MongoDB error:', err));
+// Specific rate limit for auth routes
+const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
+app.use('/api/auth', authLimiter);
+
+// Connect to MongoDB with retry logic
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, { 
+      useNewUrlParser: true, 
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000 
+    });
+    console.log('MongoDB connected');
+  } catch (err) {
+    console.error('MongoDB connection error:', err);
+    console.log('Retrying gracefully in 5 seconds...');
+    setTimeout(connectDB, 5000);
+  }
+};
+connectDB();
 
 // Auth routes
 app.use('/api/auth', require('./routes/auth'));
@@ -43,6 +67,15 @@ app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/invoice', require('./routes/invoice'));
 
 app.get('/', (req, res) => res.send('OpenBazar API running'));
+
+// Global Error Handler
+app.use((err, req, res, next) => {
+  console.error(`[Global Error]: ${err.message}`, err.stack);
+  res.status(err.status || 500).json({
+    success: false,
+    message: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message,
+  });
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

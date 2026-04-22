@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { useStore } from './StoreProvider';
 
@@ -8,14 +9,16 @@ export default function ProductCard({ product }) {
 
   return (
     <article className="group rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
-      <div className="relative overflow-hidden rounded-xl bg-slate-100">
-        <img
+      <div className="relative overflow-hidden rounded-xl bg-slate-100 h-44 w-full">
+        <Image
           src={product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'}
           alt={product.name}
-          className="h-44 w-full object-cover transition duration-300 group-hover:scale-105"
+          fill
+          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+          className="object-cover transition duration-300 group-hover:scale-105"
         />
         {hasDiscount && (
-          <span className="absolute left-2 top-2 rounded-full bg-orange-500 px-2 py-1 text-xs font-bold text-white">
+          <span className="absolute left-2 top-2 z-10 rounded-full bg-orange-500 px-2 py-1 text-xs font-bold text-white">
             -{Math.round(((product.price - product.discountPrice) / product.price) * 100)}%
           </span>
         )}

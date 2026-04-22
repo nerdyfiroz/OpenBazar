@@ -15,8 +15,18 @@ function getInitialLang() {
 }
 
 export const TranslationProvider = ({ children }) => {
-  const [lang, setLang] = useState(getInitialLang());
+  const [lang, setLang] = useState("en"); // Default for server to prevent hydration mismatch
   const [translations, setTranslations] = useState({});
+
+  useEffect(() => {
+    // Read from localStorage on client mount if it wasn't done yet
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("lang");
+      if (stored && stored !== lang) {
+        setLang(stored);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     import(`../locales/${lang}.json`).then((mod) => setTranslations(mod));

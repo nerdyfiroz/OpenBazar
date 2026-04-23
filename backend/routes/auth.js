@@ -1,28 +1,159 @@
-// Auth routes: Register, Login, Role logic
+// Auth routes: Register, Login, Role logic, OTP verification
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const Product = require('../models/Product');
 const { authenticate, authorize } = require('../middleware/auth');
+const { sendEmail, generateOTPTemplate } = require('../utils/emailSender');
 
 const router = express.Router();
 
-// Register (User or Seller)
-router.post('/register', async (req, res) => {
+// Register (User or Seller) with OTP
+router.post('/register', [
+  body('email').isEmail().withMessage('Valid email is required'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('name').notEmpty().withMessage('Name is required')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
   const { name, email, phone, password, role } = req.body;
-  if (!name || !email || !phone || !password) return res.status(400).json({ message: 'All fields required' });
   if (role && !['user', 'seller'].includes(role)) return res.status(400).json({ message: 'Invalid role' });
+
   try {
-    const exists = await User.findOne({ email });
-    if (exists) return res.status(400).json({ message: 'Email already registered' });
+    let user = await User.findOne({ email });
+    if (user && user.isVerified) return res.status(400).json({ message: 'Email already registered and verified' });
+
     const hash = await bcrypt.hash(password, 10);
-    const user = new User({ name, email, phone, password: hash, role: role || 'user' });
+    const userRole = role || 'user';
+    const isBlocked = userRole === 'seller';
+    
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
+    
+    if (user && !user.isVerified) {
+      // Overwrite unverified account
+      user.name = name;
+      user.phone = phone;
+      user.password = hash;
+      user.role = userRole;
+      user.isBlocked = isBlocked;
+      user.otp = otp;
+      user.otpExpiry = otpExpiry;
+      await user.save();
+    } else {
+      user = new User({ 
+        name, email, phone, password: hash, 
+        role: userRole, isBlocked, otp, otpExpiry, isVerified: false 
+      });
+      await user.save();
+    }
+
+    sendEmail(user.email, 'OpenBazar Identity Verification', generateOTPTemplate(otp));
+    res.json({ message: 'Registered. Please check your email for the 6-digit OTP verification code.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Verify OTP
+router.post('/verify-otp', [
+  body('email').isEmail(),
+  body('otp').isLength({ min: 6, max: 6 })
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
+    if (user.otp !== otp) return res.status(400).json({ message: 'Invalid OTP code' });
+    if (new Date() > user.otpExpiry) return res.status(400).json({ message: 'OTP has expired. Please resend.' });
+
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
     await user.save();
-    // If seller, require admin approval (set isBlocked=true for sellers until approved)
-    if (user.role === 'seller') user.isBlocked = true;
+
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({ message: 'Email verified successfully', token, user: { id: user._id, name: user.name, role: user.role } });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Resend OTP
+router.post('/resend-otp', [body('email').isEmail()], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.isVerified) return res.status(400).json({ message: 'User already verified' });
+
+    // Rate limiting: 1 minute cooldown
+    if (user.otpExpiry && (user.otpExpiry.getTime() - Date.now() > 4 * 60 * 1000)) {
+      return res.status(429).json({ message: 'Please wait a minute before requesting another OTP.' });
+    }
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
+    user.otp = otp;
+    user.otpExpiry = otpExpiry;
     await user.save();
-    res.json({ message: 'Registered. Await admin approval if seller.' });
+
+    sendEmail(user.email, 'OpenBazar Identity Verification', generateOTPTemplate(otp));
+    res.json({ message: 'A new OTP has been sent' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Password Reset Flow
+router.post('/forgot-password', [body('email').isEmail()], async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ message: 'User not found' }); // Don't leak exists for highly secure apps, but fine here
+
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.otp = otp;
+    user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes reset buffer
+    await user.save();
+
+    sendEmail(user.email, 'OpenBazar Password Reset', generateOTPTemplate(otp));
+    res.json({ message: 'Password reset OTP sent to email' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/reset-password', [
+  body('email').isEmail(),
+  body('otp').isLength({ min: 6 }),
+  body('newPassword').isLength({ min: 6 })
+], async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.otp !== otp) return res.status(400).json({ message: 'Invalid OTP' });
+    if (new Date() > user.otpExpiry) return res.status(400).json({ message: 'OTP Expired' });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+    await user.save();
+
+    res.json({ message: 'Password has been reset successfully. You can now login.' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -34,6 +165,8 @@ router.post('/login', async (req, res) => {
   try {
     const user = await User.findOne({ email });
     if (!user) return res.status(400).json({ message: 'Invalid credentials' });
+    if (!user.isVerified) return res.status(403).json({ message: 'Email not verified. Please request OTP.' });
+
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ message: 'Invalid credentials' });
     if (user.isBlocked) return res.status(403).json({ message: 'Account blocked or pending approval' });

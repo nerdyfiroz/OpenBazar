@@ -10,6 +10,9 @@ const UserSchema = new mongoose.Schema({
   role: { type: String, enum: ['user', 'seller', 'admin'], default: 'user' },
   isBlocked: { type: Boolean, default: false },
   wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
+  otp: { type: String },
+  otpExpiry: { type: Date },
+  isVerified: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   // Upgrade: Add address, profile, etc.
 });

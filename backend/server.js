@@ -11,9 +11,12 @@ dotenv.config();
 const app = express();
 
 const corsOptions = {
-  origin: process.env.NODE_ENV === 'production' 
-    ? ['https://open-bazar.me', 'https://openbazar.onrender.com'] 
-    : ['http://localhost:3000', 'http://localhost:5000'],
+  origin: [
+    'https://open-bazar.me', 
+    'https://openbazar.onrender.com',
+    'http://localhost:3000', 
+    'http://localhost:5000'
+  ],
   credentials: true,
 };
 
@@ -29,6 +32,41 @@ const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
 app.use('/api/auth', authLimiter);
 
 // Connect to MongoDB with retry logic
+const User = require('./models/User');
+const bcrypt = require('bcryptjs');
+
+const setupAdmin = async () => {
+  try {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    
+    if (!adminEmail || !adminPassword) return; // Silent skip if no admin configured
+
+    let admin = await User.findOne({ role: 'admin' });
+    if (!admin) {
+      const hashedPassword = await bcrypt.hash(adminPassword, 10);
+      admin = new User({
+        name: 'System Admin',
+        email: adminEmail,
+        phone: '0000000000',
+        password: hashedPassword,
+        role: 'admin',
+        isVerified: true
+      });
+      await admin.save();
+      console.log(`[Setup] Admin account generated for ${adminEmail}`);
+    } else if (admin.email !== adminEmail) {
+      // Update existing admin's email and password if changed in .env
+      admin.email = adminEmail;
+      admin.password = await bcrypt.hash(adminPassword, 10);
+      await admin.save();
+      console.log(`[Setup] Admin account updated to ${adminEmail}`);
+    }
+  } catch (err) {
+    console.error('[Setup] Failed to seed admin:', err.message);
+  }
+};
+
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI, { 
@@ -37,6 +75,7 @@ const connectDB = async () => {
       serverSelectionTimeoutMS: 5000 
     });
     console.log('MongoDB connected');
+    await setupAdmin();
   } catch (err) {
     console.error('MongoDB connection error:', err);
     console.log('Retrying gracefully in 5 seconds...');

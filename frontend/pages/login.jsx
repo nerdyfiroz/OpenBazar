@@ -35,8 +35,13 @@ export default function Login() {
 
       if (isLogin) {
         login({ nextUser: data.user, nextToken: data.token });
-        setMessage('Welcome back! Redirecting...');
-        setTimeout(() => router.push('/'), 900);
+        setMessage(`Welcome back, ${data.user.name}! Redirecting...`);
+        
+        setTimeout(() => {
+          if (data.user.role === 'admin') router.push('/admin/dashboard');
+          else if (data.user.role === 'seller') router.push('/seller/dashboard');
+          else router.push('/user/dashboard');
+        }, 900);
       } else {
         setMessage(data.message || 'Registration successful. Please login now.');
         setIsLogin(true);

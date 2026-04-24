@@ -374,20 +374,36 @@ export default function SellerDashboard() {
   );
 }
 
-function Input({ label, className = '', ...props }) {
+function Input({ label, className = '', onChange, ...props }) {
   return (
     <label className={`block ${className}`}>
       <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
-      <input className="input" {...props} />
+      <input
+        className="input"
+        {...props}
+        onChange={(e) => {
+          if (typeof onChange === 'function') {
+            onChange(e.target.value);
+          }
+        }}
+      />
     </label>
   );
 }
 
-function TextArea({ label, className = '', ...props }) {
+function TextArea({ label, className = '', onChange, ...props }) {
   return (
     <label className={`block ${className}`}>
       <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
-      <textarea className="input min-h-[110px]" {...props} />
+      <textarea
+        className="input min-h-[110px]"
+        {...props}
+        onChange={(e) => {
+          if (typeof onChange === 'function') {
+            onChange(e.target.value);
+          }
+        }}
+      />
     </label>
   );
 }

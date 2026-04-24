@@ -10,18 +10,35 @@ dotenv.config();
 
 const app = express();
 
+const allowedOrigins = [
+  'https://open-bazar.me',
+  'https://www.open-bazar.me',
+  'https://openbazar.onrender.com',
+  'http://localhost:3000',
+  'http://localhost:5000'
+];
+
 const corsOptions = {
-  origin: [
-    'https://open-bazar.me', 
-    'https://www.open-bazar.me',
-    'https://openbazar.onrender.com',
-    'http://localhost:3000', 
-    'http://localhost:5000'
-  ],
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+
+    const isAllowed =
+      allowedOrigins.includes(origin) ||
+      /^https:\/\/(.+\.)?open-bazar\.me$/.test(origin) ||
+      /^https:\/\/(.+\.)?onrender\.com$/.test(origin);
+
+    return isAllowed
+      ? callback(null, true)
+      : callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200,
 };
 
 app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 app.use(express.json());
 
 // Basic rate limiting

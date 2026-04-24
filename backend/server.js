@@ -78,25 +78,39 @@ const setupAdmin = async () => {
     
     if (!adminEmail || !adminPassword) return; // Silent skip if no admin configured
 
-    let admin = await User.findOne({ role: 'admin' });
+    const hashedPassword = await bcrypt.hash(adminPassword, 10);
+    let admin = await User.findOne({ email: adminEmail });
+
     if (!admin) {
-      const hashedPassword = await bcrypt.hash(adminPassword, 10);
       admin = new User({
         name: 'System Admin',
         email: adminEmail,
         phone: '0000000000',
         password: hashedPassword,
         role: 'admin',
-        isVerified: true
+        isVerified: true,
+        isBlocked: false
       });
       await admin.save();
       console.log(`[Setup] Admin account generated for ${adminEmail}`);
-    } else if (admin.email !== adminEmail) {
-      // Update existing admin's email and password if changed in .env
-      admin.email = adminEmail;
-      admin.password = await bcrypt.hash(adminPassword, 10);
+      return;
+    }
+
+    const needsUpdate =
+      admin.role !== 'admin' ||
+      admin.password !== hashedPassword ||
+      !admin.isVerified ||
+      admin.isBlocked;
+
+    if (needsUpdate) {
+      admin.role = 'admin';
+      admin.password = hashedPassword;
+      admin.isVerified = true;
+      admin.isBlocked = false;
       await admin.save();
-      console.log(`[Setup] Admin account updated to ${adminEmail}`);
+      console.log(`[Setup] Admin account refreshed for ${adminEmail}`);
+    } else {
+      console.log(`[Setup] Admin account already present for ${adminEmail}`);
     }
   } catch (err) {
     console.error('[Setup] Failed to seed admin:', err.message);

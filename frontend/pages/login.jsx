@@ -13,6 +13,28 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', role: 'user' });
 
+  const formatAuthMessage = (message) => {
+    if (!message) return 'Authentication failed';
+
+    if (message.toLowerCase().includes('too many')) {
+      return 'You’ve tried this a few times. Please wait a bit and try again — the system needs a quick coffee break.';
+    }
+
+    return message;
+  };
+
+  const readResponse = async (res) => {
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return res.json();
+    }
+
+    const text = await res.text();
+    return {
+      message: text || 'Authentication failed'
+    };
+  };
+
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -29,7 +51,7 @@ export default function Login() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
+      const data = await readResponse(res);
 
       if (!res.ok) throw new Error(data.message || 'Authentication failed');
 
@@ -49,7 +71,7 @@ export default function Login() {
         }, 700);
       }
     } catch (error) {
-      setMessage(error.message || 'Authentication failed');
+      setMessage(formatAuthMessage(error.message));
     } finally {
       setLoading(false);
     }

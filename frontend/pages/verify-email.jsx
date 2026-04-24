@@ -16,6 +16,16 @@ export default function VerifyEmailPage() {
   const [autoVerifying, setAutoVerifying] = useState(true);
   const [linkChecked, setLinkChecked] = useState(false);
 
+  const readResponse = async (res) => {
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return res.json();
+    }
+
+    const text = await res.text();
+    return { message: text || 'Request failed' };
+  };
+
   const redirectByRole = (userRole) => {
     if (userRole === 'admin') router.push('/admin/dashboard');
     else if (userRole === 'seller') router.push('/seller/dashboard');
@@ -39,7 +49,7 @@ export default function VerifyEmailPage() {
 
       try {
         const res = await fetch(`${API_BASE}/auth/verify-email-link?email=${encodeURIComponent(queryEmail)}&token=${encodeURIComponent(queryToken)}`);
-        const data = await res.json();
+        const data = await readResponse(res);
 
         if (!res.ok) throw new Error(data.message || 'Verification link failed');
 
@@ -69,7 +79,7 @@ export default function VerifyEmailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp })
       });
-      const data = await res.json();
+      const data = await readResponse(res);
 
       if (!res.ok) throw new Error(data.message || 'OTP verification failed');
 
@@ -98,7 +108,7 @@ export default function VerifyEmailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const data = await res.json();
+      const data = await readResponse(res);
 
       if (!res.ok) throw new Error(data.message || 'Failed to resend OTP');
       setMessage(data.message || 'OTP resent. Check your email.');

@@ -42,11 +42,27 @@ app.options('*', cors(corsOptions));
 app.use(express.json());
 
 // Basic rate limiting
-const limiter = rateLimit({ windowMs: 1 * 60 * 1000, max: 100 });
+const limiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({ message: 'Too many requests. Please try again later.' });
+  }
+});
 app.use(limiter);
 
 // Specific rate limit for auth routes
-const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10 });
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({ message: 'Too many auth attempts. Please wait and try again.' });
+  }
+});
 app.use('/api/auth', authLimiter);
 
 // Connect to MongoDB with retry logic

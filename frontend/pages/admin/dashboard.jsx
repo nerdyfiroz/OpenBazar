@@ -17,6 +17,12 @@ export default function AdminDashboard() {
     return localStorage.getItem('token');
   }, []);
 
+  const normalizeList = (payload, key) => {
+    if (Array.isArray(payload)) return payload;
+    if (payload && Array.isArray(payload[key])) return payload[key];
+    return [];
+  };
+
   const fetchData = async () => {
     if (!token) {
       setLoading(false);
@@ -52,9 +58,9 @@ export default function AdminDashboard() {
       const orderData = await orderRes.json();
       const userData = await userRes.json();
       setDashboard(dashData);
-      setProducts(productData);
-      setOrders(orderData);
-      setUsers(userData);
+      setProducts(normalizeList(productData, 'products'));
+      setOrders(normalizeList(orderData, 'orders'));
+      setUsers(normalizeList(userData, 'users'));
     } catch (err) {
       setMessage(err.message || 'Failed to load data');
     } finally {
@@ -85,7 +91,7 @@ export default function AdminDashboard() {
         throw new Error(data.message || 'Product update failed');
       }
 
-      setProducts((prev) => prev.map((p) => (p._id === productId ? data.product : p)));
+      setProducts((prev) => (Array.isArray(prev) ? prev.map((p) => (p._id === productId ? data.product : p)) : []));
       setMessage('Product updated successfully');
       fetchData();
     } catch (err) {
@@ -94,7 +100,7 @@ export default function AdminDashboard() {
   };
 
   const onProductFieldChange = (productId, field, value) => {
-    setProducts((prev) => prev.map((p) => (p._id === productId ? { ...p, [field]: value } : p)));
+    setProducts((prev) => (Array.isArray(prev) ? prev.map((p) => (p._id === productId ? { ...p, [field]: value } : p)) : []));
   };
 
   const updateOrderStatus = async (orderId, status) => {
@@ -110,7 +116,7 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Update failed');
-      setOrders((prev) => prev.map((o) => (o._id === orderId ? data.order : o)));
+      setOrders((prev) => (Array.isArray(prev) ? prev.map((o) => (o._id === orderId ? data.order : o)) : []));
       setMessage('Order updated');
     } catch (err) {
       setMessage(err.message || 'Order update failed');
@@ -130,7 +136,7 @@ export default function AdminDashboard() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'User update failed');
-      setUsers((prev) => prev.map((u) => (u._id === userId ? { ...u, isBlocked: data.user.isBlocked } : u)));
+      setUsers((prev) => (Array.isArray(prev) ? prev.map((u) => (u._id === userId ? { ...u, isBlocked: data.user.isBlocked } : u)) : []));
       setMessage('User status updated');
     } catch (err) {
       setMessage(err.message || 'User update failed');

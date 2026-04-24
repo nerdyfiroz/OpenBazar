@@ -2,6 +2,7 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const Product = require('../models/Product');
@@ -9,6 +10,31 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { sendEmail, generateOTPTemplate } = require('../utils/emailSender');
 
 const router = express.Router();
+
+const getEmailVerificationArtifacts = () => {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
+
+  const verificationToken = crypto.randomBytes(32).toString('hex');
+  const emailVerificationTokenHash = crypto
+    .createHash('sha256')
+    .update(verificationToken)
+    .digest('hex');
+  const emailVerificationTokenExpiry = new Date(Date.now() + 5 * 60 * 1000);
+
+  return {
+    otp,
+    otpExpiry,
+    verificationToken,
+    emailVerificationTokenHash,
+    emailVerificationTokenExpiry
+  };
+};
+
+const buildEmailVerificationLink = (email, verificationToken) => {
+  const frontendBase = (process.env.FRONTEND_URL || 'http://localhost:3000').replace(/\/$/, '');
+  return `${frontendBase}/verify-email?email=${encodeURIComponent(email)}&token=${encodeURIComponent(verificationToken)}`;
+};
 
 // Register (User or Seller) with OTP
 router.post('/register', [
@@ -30,8 +56,14 @@ router.post('/register', [
     const userRole = role || 'user';
     const isBlocked = userRole === 'seller';
     
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000); // 5 mins
+    const {
+      otp,
+      otpExpiry,
+      verificationToken,
+      emailVerificationTokenHash,
+      emailVerificationTokenExpiry
+    } = getEmailVerificationArtifacts();
+    const verificationLink = buildEmailVerificationLink(email, verificationToken);
     
     if (user && !user.isVerified) {
       // Overwrite unverified account
@@ -42,17 +74,71 @@ router.post('/register', [
       user.isBlocked = isBlocked;
       user.otp = otp;
       user.otpExpiry = otpExpiry;
+      user.emailVerificationTokenHash = emailVerificationTokenHash;
+      user.emailVerificationTokenExpiry = emailVerificationTokenExpiry;
       await user.save();
     } else {
       user = new User({ 
         name, email, phone, password: hash, 
-        role: userRole, isBlocked, otp, otpExpiry, isVerified: false 
+        role: userRole,
+        isBlocked,
+        otp,
+        otpExpiry,
+        emailVerificationTokenHash,
+        emailVerificationTokenExpiry,
+        isVerified: false 
       });
       await user.save();
     }
 
-    sendEmail(user.email, 'OpenBazar Identity Verification', generateOTPTemplate(otp));
+    sendEmail(user.email, 'OpenBazar Identity Verification', generateOTPTemplate(otp, verificationLink));
     res.json({ message: 'Registered. Please check your email for the 6-digit OTP verification code.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Verify via one-time email link
+router.get('/verify-email-link', async (req, res) => {
+  try {
+    const { email, token } = req.query;
+
+    if (!email || !token) {
+      return res.status(400).json({ message: 'Email and token are required' });
+    }
+
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.isVerified) {
+      const existingToken = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+      return res.json({
+        message: 'Email already verified',
+        token: existingToken,
+        user: { id: user._id, name: user.name, role: user.role }
+      });
+    }
+
+    const tokenHash = crypto.createHash('sha256').update(String(token)).digest('hex');
+    if (!user.emailVerificationTokenHash || user.emailVerificationTokenHash !== tokenHash) {
+      return res.status(400).json({ message: 'Invalid verification link' });
+    }
+    if (!user.emailVerificationTokenExpiry || new Date() > user.emailVerificationTokenExpiry) {
+      return res.status(400).json({ message: 'Verification link expired. Please request a new OTP.' });
+    }
+
+    user.isVerified = true;
+    user.otp = undefined;
+    user.otpExpiry = undefined;
+    user.emailVerificationTokenHash = undefined;
+    user.emailVerificationTokenExpiry = undefined;
+    await user.save();
+
+    const authToken = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.json({
+      message: 'Email verified successfully',
+      token: authToken,
+      user: { id: user._id, name: user.name, role: user.role }
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -78,6 +164,8 @@ router.post('/verify-otp', [
     user.isVerified = true;
     user.otp = undefined;
     user.otpExpiry = undefined;
+    user.emailVerificationTokenHash = undefined;
+    user.emailVerificationTokenExpiry = undefined;
     await user.save();
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -103,13 +191,22 @@ router.post('/resend-otp', [body('email').isEmail()], async (req, res) => {
       return res.status(429).json({ message: 'Please wait a minute before requesting another OTP.' });
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
+    const {
+      otp,
+      otpExpiry,
+      verificationToken,
+      emailVerificationTokenHash,
+      emailVerificationTokenExpiry
+    } = getEmailVerificationArtifacts();
+    const verificationLink = buildEmailVerificationLink(email, verificationToken);
+
     user.otp = otp;
     user.otpExpiry = otpExpiry;
+    user.emailVerificationTokenHash = emailVerificationTokenHash;
+    user.emailVerificationTokenExpiry = emailVerificationTokenExpiry;
     await user.save();
 
-    sendEmail(user.email, 'OpenBazar Identity Verification', generateOTPTemplate(otp));
+    sendEmail(user.email, 'OpenBazar Identity Verification', generateOTPTemplate(otp, verificationLink));
     res.json({ message: 'A new OTP has been sent' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

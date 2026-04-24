@@ -12,6 +12,8 @@ const UserSchema = new mongoose.Schema({
   wishlist: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Product' }],
   otp: { type: String },
   otpExpiry: { type: Date },
+  emailVerificationTokenHash: { type: String },
+  emailVerificationTokenExpiry: { type: Date },
   isVerified: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   // Upgrade: Add address, profile, etc.

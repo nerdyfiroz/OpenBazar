@@ -43,8 +43,10 @@ export default function Login() {
           else router.push('/user/dashboard');
         }, 900);
       } else {
-        setMessage(data.message || 'Registration successful. Please login now.');
-        setIsLogin(true);
+        setMessage(data.message || 'Registration successful. Redirecting to verification...');
+        setTimeout(() => {
+          router.push(`/verify-email?email=${encodeURIComponent(form.email)}`);
+        }, 700);
       }
     } catch (error) {
       setMessage(error.message || 'Authentication failed');

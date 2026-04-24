@@ -2,6 +2,15 @@
 // Upgrade: Add image upload, product reviews, search/filter, etc.
 const Product = require('../models/Product');
 
+const SELLER_ALLOWED_CATEGORIES = ['Electronics', 'Fashion', 'Beauty', 'Home & Living', 'Sports'];
+
+const normalizeSellerCategory = (rawCategory) => {
+  const normalized = String(rawCategory || '').trim().toLowerCase();
+  if (!normalized) return '';
+
+  return SELLER_ALLOWED_CATEGORIES.find((category) => category.toLowerCase() === normalized) || '';
+};
+
 const normalizeList = (value) => {
   if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
   if (typeof value === 'string') return value.split(',').map((item) => String(item).trim()).filter(Boolean);
@@ -52,6 +61,14 @@ exports.createProduct = async (req, res) => {
     const normalizedSalePercent = salePercent !== undefined && salePercent !== null && salePercent !== ''
       ? Number(salePercent)
       : 0;
+    const normalizedCategory = normalizeSellerCategory(category);
+
+    if (!normalizedCategory) {
+      return res.status(400).json({
+        message: `Category must be one of: ${SELLER_ALLOWED_CATEGORIES.join(', ')}`
+      });
+    }
+
     const basePrice = Number(price);
     const computedDiscountPrice = normalizedSalePercent > 0
       ? Math.max(0, Number((basePrice * (1 - normalizedSalePercent / 100)).toFixed(2)))
@@ -86,7 +103,7 @@ exports.createProduct = async (req, res) => {
       price: basePrice,
       salePercent: normalizedSalePercent,
       discountPrice: computedDiscountPrice,
-      category,
+      category: normalizedCategory,
       brand,
       specifications,
       colors: normalizeList(colors),
@@ -211,6 +228,16 @@ exports.updateProduct = async (req, res) => {
   try {
     const product = await Product.findOne({ _id: req.params.id, seller: req.user._id });
     if (!product) return res.status(404).json({ message: 'Not found' });
+
+    if (req.body.category !== undefined) {
+      const normalizedCategory = normalizeSellerCategory(req.body.category);
+      if (!normalizedCategory) {
+        return res.status(400).json({
+          message: `Category must be one of: ${SELLER_ALLOWED_CATEGORIES.join(', ')}`
+        });
+      }
+      req.body.category = normalizedCategory;
+    }
 
     if (req.body.salePercent !== undefined && req.body.salePercent !== null && Number(req.body.salePercent) > 100) {
       return res.status(400).json({ message: 'Sale percentage cannot exceed 100' });

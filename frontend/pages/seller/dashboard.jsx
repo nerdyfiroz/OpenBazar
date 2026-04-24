@@ -3,6 +3,8 @@ import MarketplaceLayout from '../../components/MarketplaceLayout';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
+const SELLER_ALLOWED_CATEGORIES = ['Electronics', 'Fashion', 'Beauty', 'Home & Living', 'Sports'];
+
 const initialForm = {
   name: '',
   description: '',
@@ -168,7 +170,20 @@ export default function SellerDashboard() {
             <form onSubmit={submitProduct} className="mt-4 grid gap-3 md:grid-cols-2">
               <Input label="Product Name" value={form.name} onChange={(value) => setForm((p) => ({ ...p, name: value }))} required />
               <Input label="Brand" value={form.brand} onChange={(value) => setForm((p) => ({ ...p, brand: value }))} placeholder="e.g. Samsung" />
-              <Input label="Category" value={form.category} onChange={(value) => setForm((p) => ({ ...p, category: value }))} placeholder="e.g. Electronics" />
+              <div>
+                <label className="mb-1 block text-sm font-medium text-slate-700">Category</label>
+                <select
+                  className="input"
+                  value={form.category}
+                  onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))}
+                  required
+                >
+                  <option value="">Select category</option>
+                  {SELLER_ALLOWED_CATEGORIES.map((category) => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
               <Input label="Base Price" type="number" min="0" value={form.price} onChange={(value) => setForm((p) => ({ ...p, price: value }))} required />
 
               <div className="md:col-span-2">

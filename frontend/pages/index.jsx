@@ -5,6 +5,14 @@ import ProductCard from '../components/ProductCard';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
+const SHOP_CATEGORIES = [
+  { label: 'Electronics', emoji: '📱' },
+  { label: 'Fashion', emoji: '👗' },
+  { label: 'Beauty', emoji: '💄' },
+  { label: 'Home & Living', emoji: '🏠' },
+  { label: 'Sports', emoji: '⚽' }
+];
+
 export default function Home() {
   const [products, setProducts] = useState([]);
 
@@ -36,15 +44,6 @@ export default function Home() {
     return () => clearInterval(interval);
   }, []);
 
-  const categories = [
-    { label: 'Electronics', emoji: '📱' },
-    { label: 'Fashion', emoji: '👗' },
-    { label: 'Groceries', emoji: '🛒' },
-    { label: 'Beauty', emoji: '💄' },
-    { label: 'Home & Living', emoji: '🏠' },
-    { label: 'Sports', emoji: '⚽' }
-  ];
-
   const featured = products.slice(0, 8);
   const trending = products.slice(8, 16);
 
@@ -54,7 +53,7 @@ export default function Home() {
         <div className="rounded-3xl bg-gradient-to-r from-orange-500 to-amber-500 p-8 text-white md:col-span-2">
           <p className="mb-2 inline-block rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">Daraz-style Mega Campaign</p>
           <h1 className="text-3xl font-black md:text-5xl">Bangladesh’s Favorite Marketplace</h1>
-          <p className="mt-3 max-w-xl text-sm text-orange-100">Up to 70% off on electronics, fashion, and grocery essentials. Fast nationwide delivery.</p>
+          <p className="mt-3 max-w-xl text-sm text-orange-100">Up to 70% off on electronics, fashion, beauty, and more. Fast nationwide delivery.</p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link href="/category" className="rounded-full bg-white px-4 py-2 text-sm font-semibold text-orange-600">Shop Now</Link>
             <Link href="/category?sort=popular" className="rounded-full border border-white/50 px-4 py-2 text-sm font-semibold hover:bg-white/10">Trending Deals</Link>
@@ -70,8 +69,8 @@ export default function Home() {
 
       <section className="mx-auto max-w-7xl px-4 py-4 md:px-6">
         <h2 className="mb-4 text-xl font-bold">Shop by Category</h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-          {categories.map((cat) => (
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-5">
+          {SHOP_CATEGORIES.map((cat) => (
             <Link
               key={cat.label}
               href={`/category?category=${encodeURIComponent(cat.label)}`}

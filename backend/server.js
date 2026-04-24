@@ -13,6 +13,7 @@ const app = express();
 const corsOptions = {
   origin: [
     'https://open-bazar.me', 
+    'https://www.open-bazar.me',
     'https://openbazar.onrender.com',
     'http://localhost:3000', 
     'http://localhost:5000'

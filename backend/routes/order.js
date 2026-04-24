@@ -1,12 +1,12 @@
 // Order routes: user, seller
 const express = require('express');
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, optionalAuthenticate, authorize } = require('../middleware/auth');
 const ctrl = require('../controllers/orderController');
 
 const router = express.Router();
 
 // User
-router.post('/', authenticate, authorize(['user']), ctrl.placeOrder);
+router.post('/', optionalAuthenticate, ctrl.placeOrder);
 router.get('/my', authenticate, authorize(['user']), ctrl.getMyOrders);
 
 // Seller

@@ -22,5 +22,25 @@ module.exports = {
       return res.status(403).json({ message: 'Forbidden: Insufficient role' });
     }
     next();
+  },
+  optionalAuthenticate: async (req, res, next) => {
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      req.user = null;
+      return next();
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id).select('-password');
+      if (!req.user) {
+        req.user = null;
+      }
+      if (req.user && req.user.isBlocked) return res.status(403).json({ message: 'User blocked' });
+      next();
+    } catch (err) {
+      req.user = null;
+      next();
+    }
   }
 };

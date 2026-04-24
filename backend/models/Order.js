@@ -10,7 +10,20 @@ const OrderStatusHistorySchema = new mongoose.Schema({
 }, { _id: true });
 
 const OrderSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
+  guestCustomer: {
+    name: { type: String, default: '' },
+    email: { type: String, default: '' },
+    phone: { type: String, default: '' }
+  },
+  shippingAddress: {
+    division: { type: String, default: '' },
+    district: { type: String, default: '' },
+    upazila: { type: String, default: '' },
+    ward: { type: String, default: '' },
+    area: { type: String, default: '' },
+    fullAddress: { type: String, default: '' }
+  },
   products: [
     {
       product: { type: mongoose.Schema.Types.ObjectId, ref: 'Product' },

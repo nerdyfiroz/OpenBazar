@@ -6,6 +6,29 @@ const Coupon = require('../models/Coupon');
 const { verifyPayment } = require('../services/paymentGateway');
 const { validateCouponDoc } = require('./couponController');
 
+const PAID_STATUSES = ['paid', 'confirmed', 'processing', 'shipped', 'delivered'];
+
+const buildGuestCustomer = (paymentInfo = {}) => ({
+  name: String(paymentInfo.customerName || '').trim(),
+  email: String(paymentInfo.email || '').trim().toLowerCase(),
+  phone: String(paymentInfo.phone || '').trim()
+});
+
+const buildShippingAddress = (paymentInfo = {}) => ({
+  division: String(paymentInfo.division || '').trim(),
+  district: String(paymentInfo.district || '').trim(),
+  upazila: String(paymentInfo.upazila || '').trim(),
+  ward: String(paymentInfo.ward || '').trim(),
+  area: String(paymentInfo.area || '').trim(),
+  fullAddress: String(paymentInfo.fullAddress || paymentInfo.address || '').trim()
+});
+
+const productWasPurchasedByOrders = (orders = [], productId) => orders.some((order) =>
+  PAID_STATUSES.includes(order.status)
+  && Array.isArray(order.products)
+  && order.products.some((item) => item.product && item.product.toString() === productId.toString())
+);
+
 const STATUS_TRANSITIONS = {
   pending: ['confirmed', 'cancelled', 'paid'],
   paid: ['confirmed', 'cancelled'],
@@ -18,11 +41,34 @@ const STATUS_TRANSITIONS = {
 
 exports.placeOrder = async (req, res) => {
   try {
-    const { products, paymentMethod, paymentInfo } = req.body;
-    if (paymentMethod !== 'COD') {
+    const { products, paymentMethod, paymentInfo = {} } = req.body;
+    const buyer = req.user || null;
+
+    if (!Array.isArray(products) || !products.length) {
+      return res.status(400).json({ message: 'No products found in the order' });
+    }
+
+    if (!['COD', 'bKash', 'Nagad', 'Rocket'].includes(paymentMethod)) {
       return res.status(400).json({
-        message: 'Only Cash on Delivery (COD) is allowed at checkout. bKash/Nagad/Rocket are manual send money only.'
+        message: 'Choose COD or mobile banking send money (bKash, Nagad, Rocket).'
       });
+    }
+
+    const guestCustomer = buildGuestCustomer(paymentInfo);
+    const shippingAddress = buildShippingAddress(paymentInfo);
+
+    if (!buyer) {
+      if (!guestCustomer.name || !guestCustomer.email || !guestCustomer.phone) {
+        return res.status(400).json({ message: 'Guest checkout requires name, email, and phone number' });
+      }
+    }
+
+    if (!shippingAddress.division || !shippingAddress.district || !shippingAddress.upazila || !shippingAddress.ward || !shippingAddress.fullAddress) {
+      return res.status(400).json({ message: 'Please provide your division, district, upazila, ward, and full address' });
+    }
+
+    if (paymentMethod !== 'COD' && !String(paymentInfo.transactionId || '').trim()) {
+      return res.status(400).json({ message: 'Transaction ID is required for mobile banking send money orders' });
     }
 
     // Validate products and calculate subtotal
@@ -62,7 +108,7 @@ exports.placeOrder = async (req, res) => {
     const total = Math.max(0, subtotal - discountTotal + deliveryCharge);
 
     const paymentVerification = verifyPayment({
-      paymentMethod: 'COD',
+      paymentMethod,
       paymentInfo,
       orderTotal: total
     });
@@ -72,14 +118,18 @@ exports.placeOrder = async (req, res) => {
     }
 
     const order = new Order({
-      user: req.user._id,
+      user: buyer?._id || null,
+      guestCustomer: buyer
+        ? { name: buyer.name, email: buyer.email, phone: buyer.phone }
+        : guestCustomer,
+      shippingAddress,
       products: orderProducts,
       subtotal,
       discountTotal,
       deliveryCharge,
       total,
       appliedCoupon,
-      paymentMethod: 'COD',
+      paymentMethod,
       paymentInfo: {
         ...paymentInfo,
         provider: paymentVerification.provider,
@@ -91,7 +141,7 @@ exports.placeOrder = async (req, res) => {
         {
           status: paymentVerification.verified ? 'paid' : 'pending',
           note: paymentVerification.message,
-          changedBy: req.user._id
+          changedBy: buyer?._id || null
         }
       ],
       isPaid: paymentVerification.verified,

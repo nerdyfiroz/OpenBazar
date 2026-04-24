@@ -15,6 +15,7 @@ export default function ProductDetails() {
   const [activeImage, setActiveImage] = useState(0);
   const [reviews, setReviews] = useState([]);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
+  const [guestReviewForm, setGuestReviewForm] = useState({ name: '', email: '', phone: '', orderId: '', rating: 5, comment: '' });
   const [reviewMessage, setReviewMessage] = useState('');
 
   useEffect(() => {
@@ -46,13 +47,21 @@ export default function ProductDetails() {
     }
 
     try {
+      const payload = token
+        ? { rating: Number(reviewForm.rating), comment: reviewForm.comment }
+        : {
+            ...guestReviewForm,
+            rating: Number(guestReviewForm.rating),
+            comment: guestReviewForm.comment
+          };
+
       const res = await fetch(`${API_BASE}/products/${id}/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ rating: Number(reviewForm.rating), comment: reviewForm.comment })
+        body: JSON.stringify(payload)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Review submit failed');
@@ -129,16 +138,33 @@ export default function ProductDetails() {
 
           <form onSubmit={submitReview} className="mt-3 rounded-xl border border-slate-200 p-3">
             <p className="mb-2 text-sm font-semibold">Write a review</p>
-            <div className="grid gap-2 md:grid-cols-[120px_1fr]">
-              <select className="input" value={reviewForm.rating} onChange={(e) => setReviewForm((prev) => ({ ...prev, rating: e.target.value }))}>
-                <option value={5}>5 ★</option>
-                <option value={4}>4 ★</option>
-                <option value={3}>3 ★</option>
-                <option value={2}>2 ★</option>
-                <option value={1}>1 ★</option>
-              </select>
-              <input className="input" value={reviewForm.comment} onChange={(e) => setReviewForm((prev) => ({ ...prev, comment: e.target.value }))} placeholder="Share your experience" maxLength={300} />
-            </div>
+            {token ? (
+              <div className="grid gap-2 md:grid-cols-[120px_1fr]">
+                <select className="input" value={reviewForm.rating} onChange={(e) => setReviewForm((prev) => ({ ...prev, rating: e.target.value }))}>
+                  <option value={5}>5 ★</option>
+                  <option value={4}>4 ★</option>
+                  <option value={3}>3 ★</option>
+                  <option value={2}>2 ★</option>
+                  <option value={1}>1 ★</option>
+                </select>
+                <input className="input" value={reviewForm.comment} onChange={(e) => setReviewForm((prev) => ({ ...prev, comment: e.target.value }))} placeholder="Share your experience" maxLength={300} />
+              </div>
+            ) : (
+              <div className="grid gap-2 md:grid-cols-2">
+                <input className="input" placeholder="Your Name" value={guestReviewForm.name} onChange={(e) => setGuestReviewForm((prev) => ({ ...prev, name: e.target.value }))} required />
+                <input className="input" placeholder="Order ID" value={guestReviewForm.orderId} onChange={(e) => setGuestReviewForm((prev) => ({ ...prev, orderId: e.target.value }))} required />
+                <input className="input" type="email" placeholder="Email" value={guestReviewForm.email} onChange={(e) => setGuestReviewForm((prev) => ({ ...prev, email: e.target.value }))} required />
+                <input className="input" placeholder="Phone Number" value={guestReviewForm.phone} onChange={(e) => setGuestReviewForm((prev) => ({ ...prev, phone: e.target.value }))} required />
+                <select className="input" value={guestReviewForm.rating} onChange={(e) => setGuestReviewForm((prev) => ({ ...prev, rating: e.target.value }))}>
+                  <option value={5}>5 ★</option>
+                  <option value={4}>4 ★</option>
+                  <option value={3}>3 ★</option>
+                  <option value={2}>2 ★</option>
+                  <option value={1}>1 ★</option>
+                </select>
+                <input className="input" value={guestReviewForm.comment} onChange={(e) => setGuestReviewForm((prev) => ({ ...prev, comment: e.target.value }))} placeholder="Share your experience" maxLength={300} />
+              </div>
+            )}
             <div className="mt-2 flex items-center gap-3">
               <button type="submit" className="rounded-lg bg-orange-500 px-4 py-2 text-xs font-semibold text-white hover:bg-orange-600">Submit Review</button>
               {reviewMessage && <p className="text-xs text-slate-500">{reviewMessage}</p>}

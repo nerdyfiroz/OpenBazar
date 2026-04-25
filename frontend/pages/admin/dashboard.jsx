@@ -12,6 +12,7 @@ export default function AdminDashboard() {
   const [sellerApplications, setSellerApplications] = useState([]);
   const [badgeRequests, setBadgeRequests] = useState([]);
   const [verificationFee, setVerificationFee] = useState(0);
+  const [flashSale, setFlashSale] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [statusNote, setStatusNote] = useState('');
@@ -27,6 +28,14 @@ export default function AdminDashboard() {
     return [];
   };
 
+  const toDateTimeLocal = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  };
+
   const fetchData = async () => {
     if (!token) {
       setLoading(false);
@@ -38,7 +47,7 @@ export default function AdminDashboard() {
     setMessage('');
 
     try {
-      const [dashRes, productRes, orderRes, userRes, sellerAppRes, badgeReqRes, feeRes] = await Promise.all([
+      const [dashRes, productRes, orderRes, userRes, sellerAppRes, badgeReqRes, feeRes, flashSaleRes] = await Promise.all([
         fetch(`${API_BASE}/dashboard/admin`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
@@ -59,10 +68,11 @@ export default function AdminDashboard() {
         }),
         fetch(`${API_BASE}/auth/admin/seller-verification-fee`, {
           headers: { Authorization: `Bearer ${token}` }
-        })
+        }),
+        fetch(`${API_BASE}/dashboard/flash-sale`)
       ]);
 
-      if (!dashRes.ok || !productRes.ok || !orderRes.ok || !userRes.ok || !sellerAppRes.ok || !badgeReqRes.ok || !feeRes.ok) {
+      if (!dashRes.ok || !productRes.ok || !orderRes.ok || !userRes.ok || !sellerAppRes.ok || !badgeReqRes.ok || !feeRes.ok || !flashSaleRes.ok) {
         throw new Error('Failed to load admin data. Ensure you are logged in as admin.');
       }
 
@@ -73,6 +83,7 @@ export default function AdminDashboard() {
       const sellerAppData = await sellerAppRes.json();
       const badgeReqData = await badgeReqRes.json();
       const feeData = await feeRes.json();
+      const flashSaleData = await flashSaleRes.json();
       setDashboard(dashData);
       setProducts(normalizeList(productData, 'products'));
       setOrders(normalizeList(orderData, 'orders'));
@@ -80,6 +91,7 @@ export default function AdminDashboard() {
       setSellerApplications(normalizeList(sellerAppData, 'users'));
       setBadgeRequests(normalizeList(badgeReqData, 'users'));
       setVerificationFee(Number(feeData.fee || 0));
+      setFlashSale(flashSaleData);
     } catch (err) {
       setMessage(err.message || 'Failed to load data');
     } finally {
@@ -286,8 +298,12 @@ export default function AdminDashboard() {
                 <tr className="text-left border-b">
                   <th className="py-2 pr-3">Product</th>
                   <th className="py-2 pr-3">Seller</th>
+                  <th className="py-2 pr-3">Sale Type</th>
                   <th className="py-2 pr-3">Base Price</th>
+                  <th className="py-2 pr-3">Sale %</th>
                   <th className="py-2 pr-3">Discount Price</th>
+                  <th className="py-2 pr-3">Sale Start</th>
+                  <th className="py-2 pr-3">Sale End</th>
                   <th className="py-2 pr-3">Approved</th>
                   <th className="py-2 pr-3">Active</th>
                   <th className="py-2 pr-3">Action</th>
@@ -298,6 +314,17 @@ export default function AdminDashboard() {
                   <tr key={p._id} className="border-b align-top">
                     <td className="py-2 pr-3 font-medium">{p.name}</td>
                     <td className="py-2 pr-3">{p.seller?.name || 'N/A'}</td>
+                    <td className="py-2 pr-3">
+                      <select
+                        className="w-32 rounded border px-2 py-1"
+                        value={p.saleType || 'regular'}
+                        onChange={(e) => onProductFieldChange(p._id, 'saleType', e.target.value)}
+                      >
+                        <option value="regular">Regular</option>
+                        <option value="sale">Flash Sale</option>
+                        <option value="preorder">Preorder</option>
+                      </select>
+                    </td>
                     <td className="py-2 pr-3">
                       <input
                         className="w-24 border rounded px-2 py-1"
@@ -323,6 +350,22 @@ export default function AdminDashboard() {
                     </td>
                     <td className="py-2 pr-3">
                       <input
+                        className="w-44 rounded border px-2 py-1"
+                        type="datetime-local"
+                        value={toDateTimeLocal(p.saleStartAt)}
+                        onChange={(e) => onProductFieldChange(p._id, 'saleStartAt', e.target.value || null)}
+                      />
+                    </td>
+                    <td className="py-2 pr-3">
+                      <input
+                        className="w-44 rounded border px-2 py-1"
+                        type="datetime-local"
+                        value={toDateTimeLocal(p.saleEndAt)}
+                        onChange={(e) => onProductFieldChange(p._id, 'saleEndAt', e.target.value || null)}
+                      />
+                    </td>
+                    <td className="py-2 pr-3">
+                      <input
                         type="checkbox"
                         checked={Boolean(p.isApproved)}
                         onChange={(e) => onProductFieldChange(p._id, 'isApproved', e.target.checked)}
@@ -341,7 +384,11 @@ export default function AdminDashboard() {
                           className="rounded bg-black px-3 py-1 text-white"
                           onClick={() => updateProduct(p._id, {
                             price: p.price,
+                            saleType: p.saleType,
+                            salePercent: p.salePercent,
                             discountPrice: p.discountPrice,
+                            saleStartAt: p.saleStartAt || null,
+                            saleEndAt: p.saleEndAt || null,
                             isApproved: p.isApproved,
                             isActive: p.isActive
                           })}
@@ -377,6 +424,27 @@ export default function AdminDashboard() {
                 Update Fee
               </button>
             </div>
+          </section>
+
+          <section className="rounded-lg border border-gray-200 bg-white p-4">
+            <h2 className="text-lg font-semibold mb-3">Flash Sale Manager</h2>
+            <div className="grid gap-3 text-sm md:grid-cols-3">
+              <div className="rounded border border-orange-200 bg-orange-50 p-3">
+                <p className="text-xs uppercase text-orange-600">Live status</p>
+                <p className="mt-1 font-semibold">{flashSale?.status === 'active' ? 'Active' : 'Inactive'}</p>
+              </div>
+              <div className="rounded border border-orange-200 bg-orange-50 p-3">
+                <p className="text-xs uppercase text-orange-600">Active sale products</p>
+                <p className="mt-1 font-semibold">{flashSale?.count || 0}</p>
+              </div>
+              <div className="rounded border border-orange-200 bg-orange-50 p-3">
+                <p className="text-xs uppercase text-orange-600">Next sale ends</p>
+                <p className="mt-1 font-semibold">{flashSale?.nextEndsAt ? new Date(flashSale.nextEndsAt).toLocaleString() : 'No active sale'}</p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-slate-600">
+              Use the product table above to turn products into flash-sale items, set discount prices, and choose the sale window.
+            </p>
           </section>
 
           <section className="rounded-lg border border-gray-200 bg-white p-4 overflow-x-auto">

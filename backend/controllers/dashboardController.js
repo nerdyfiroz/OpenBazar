@@ -93,6 +93,41 @@ exports.adminDashboard = async (req, res) => {
   }
 };
 
+exports.flashSaleStatus = async (req, res) => {
+  try {
+    const now = new Date();
+
+    const activeSaleProducts = await Product.find({
+      isApproved: true,
+      isActive: true,
+      saleType: 'sale',
+      $and: [
+        { $or: [{ saleStartAt: null }, { saleStartAt: { $lte: now } }] },
+        { $or: [{ saleEndAt: null }, { saleEndAt: { $gte: now } }] }
+      ]
+    })
+      .select('name price discountPrice salePercent saleStartAt saleEndAt images')
+      .sort({ saleEndAt: 1, createdAt: -1 });
+
+    const nextEndsAt = activeSaleProducts.reduce((soonest, product) => {
+      if (!product.saleEndAt) return soonest;
+      if (!soonest) return product.saleEndAt;
+      return product.saleEndAt < soonest ? product.saleEndAt : soonest;
+    }, null);
+
+    const status = activeSaleProducts.length ? 'active' : 'inactive';
+
+    res.json({
+      status,
+      nextEndsAt,
+      products: activeSaleProducts,
+      count: activeSaleProducts.length
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
 exports.trackVisitor = async (req, res) => {
   try {
     const day = new Date().toISOString().slice(0, 10);

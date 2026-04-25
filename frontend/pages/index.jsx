@@ -15,6 +15,8 @@ const SHOP_CATEGORIES = [
 
 export default function Home() {
   const [products, setProducts] = useState([]);
+  const [flashSale, setFlashSale] = useState({ status: 'inactive', count: 0, nextEndsAt: null });
+  const [flashSaleEndsIn, setFlashSaleEndsIn] = useState('00:00:00');
 
   useEffect(() => {
     fetch(`${API_BASE}/dashboard/visit`, { method: 'POST' }).catch(() => {});
@@ -23,26 +25,37 @@ export default function Home() {
       .then((res) => res.json())
       .then((data) => setProducts(Array.isArray(data.products) ? data.products : (Array.isArray(data) ? data : [])))
       .catch(() => setProducts([]));
-  }, []);
 
-  const [flashSaleEndsIn, setFlashSaleEndsIn] = useState('00:00:00');
+    fetch(`${API_BASE}/dashboard/flash-sale`)
+      .then((res) => res.json())
+      .then((data) => setFlashSale({
+        status: data?.status || 'inactive',
+        count: Number(data?.count || 0),
+        nextEndsAt: data?.nextEndsAt || null
+      }))
+      .catch(() => setFlashSale({ status: 'inactive', count: 0, nextEndsAt: null }));
+  }, []);
 
   useEffect(() => {
     const updateTimer = () => {
+      if (!flashSale.nextEndsAt) {
+        setFlashSaleEndsIn('00:00:00');
+        return;
+      }
+
       const now = new Date();
-      const end = new Date();
-      end.setHours(23, 59, 59, 999);
+      const end = new Date(flashSale.nextEndsAt);
       const diff = Math.max(0, end.getTime() - now.getTime());
       const h = Math.floor(diff / (1000 * 60 * 60));
       const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const s = Math.floor((diff % (1000 * 60)) / 1000);
       setFlashSaleEndsIn(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`);
     };
-    
+
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [flashSale.nextEndsAt]);
 
   const featured = products.slice(0, 8);
   const trending = products.slice(8, 16);
@@ -63,7 +76,11 @@ export default function Home() {
         <div className="rounded-3xl border border-orange-100 bg-white p-5 shadow-sm">
           <p className="text-xs font-semibold uppercase text-orange-500">Flash Sale Ends In</p>
           <p className="mt-2 text-3xl font-black tracking-wider">{flashSaleEndsIn}</p>
-          <p className="mt-2 text-sm text-slate-600">Limited-time lightning deals. Grab before stock runs out.</p>
+          <p className="mt-2 text-sm text-slate-600">
+            {flashSale.status === 'active'
+              ? `${flashSale.count} product${flashSale.count === 1 ? '' : 's'} are on flash sale right now.`
+              : 'No flash sale is running at the moment.'}
+          </p>
         </div>
       </section>
 

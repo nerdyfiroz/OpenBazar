@@ -36,6 +36,16 @@ const buildEmailVerificationLink = (email, verificationToken) => {
   return `${frontendBase}/verify-email?email=${encodeURIComponent(email)}&token=${encodeURIComponent(verificationToken)}`;
 };
 
+const getPasswordResetOtpArtifacts = () => {
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
+
+  return {
+    otp,
+    otpExpiry
+  };
+};
+
 // Register (User or Seller) with OTP
 router.post('/register', [
   body('email').isEmail().withMessage('Valid email is required'),
@@ -215,14 +225,18 @@ router.post('/resend-otp', [body('email').isEmail()], async (req, res) => {
 
 // Password Reset Flow
 router.post('/forgot-password', [body('email').isEmail()], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
   try {
     const { email } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: String(email).toLowerCase() });
     if (!user) return res.status(404).json({ message: 'User not found' }); // Don't leak exists for highly secure apps, but fine here
+    if (!user.isVerified) return res.status(403).json({ message: 'Please verify your email before resetting password' });
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const { otp, otpExpiry } = getPasswordResetOtpArtifacts();
     user.otp = otp;
-    user.otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes reset buffer
+    user.otpExpiry = otpExpiry;
     await user.save();
 
     sendEmail(user.email, 'OpenBazar Password Reset', generateOTPTemplate(otp));
@@ -237,11 +251,15 @@ router.post('/reset-password', [
   body('otp').isLength({ min: 6 }),
   body('newPassword').isLength({ min: 6 })
 ], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
   try {
     const { email, otp, newPassword } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: String(email).toLowerCase() });
 
     if (!user) return res.status(404).json({ message: 'User not found' });
+    if (!user.isVerified) return res.status(403).json({ message: 'Please verify your email before resetting password' });
     if (user.otp !== otp) return res.status(400).json({ message: 'Invalid OTP' });
     if (new Date() > user.otpExpiry) return res.status(400).json({ message: 'OTP Expired' });
 
@@ -265,7 +283,7 @@ router.post('/login', async (req, res) => {
     if (!user.isVerified) return res.status(403).json({ message: 'Email not verified. Please request OTP.' });
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(400).json({ message: 'Invalid credentials' });
+    if (!match) return res.status(400).json({ message: 'Invalid credentials', canResetPassword: true });
     if (user.isBlocked) return res.status(403).json({ message: 'Account blocked or pending approval' });
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: user._id, name: user.name, role: user.role } });

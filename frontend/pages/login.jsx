@@ -101,6 +101,16 @@ export default function Login() {
             <input className="input" type="email" placeholder="Email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required />
             <input className="input" type="password" placeholder="Password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required />
 
+            {isLogin && (
+              <button
+                type="button"
+                onClick={() => router.push(`/forgot-password${form.email ? `?email=${encodeURIComponent(form.email)}` : ''}`)}
+                className="text-sm text-orange-500 underline"
+              >
+                Forgot password?
+              </button>
+            )}
+
             <button type="submit" disabled={loading} className="w-full rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-70">
               {loading ? 'Please wait...' : isLogin ? 'Login' : 'Register'}
             </button>

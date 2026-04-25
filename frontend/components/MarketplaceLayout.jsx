@@ -54,7 +54,7 @@ export default function MarketplaceLayout({ children }) {
             <img
               src="/api/logo"
               alt="OpenBazar"
-              className="h-16 w-auto max-w-[300px] object-contain md:h-18"
+              className="h-20 w-auto max-w-[380px] object-contain md:h-24 lg:h-28"
             />
           </Link>
 

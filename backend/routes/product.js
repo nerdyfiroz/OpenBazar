@@ -18,6 +18,7 @@ router.post('/:id/reviews', optionalAuthenticate, ctrl.addOrUpdateReview);
 // Admin
 router.get('/admin/all', authenticate, authorize(['admin']), ctrl.adminGetAllProducts);
 router.put('/admin/:id', authenticate, authorize(['admin']), ctrl.adminUpdateProduct);
+router.delete('/admin/:id', authenticate, authorize(['admin']), ctrl.adminDeleteProduct);
 
 router.put('/:id', authenticate, authorize(['seller']), uploadProductMedia, ctrl.updateProduct);
 router.delete('/:id', authenticate, authorize(['seller']), ctrl.deleteProduct);

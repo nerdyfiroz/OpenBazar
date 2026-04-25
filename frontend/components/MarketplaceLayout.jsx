@@ -39,6 +39,13 @@ export default function MarketplaceLayout({ children }) {
     setSuggestions([]);
   };
 
+  const getDashboardHref = () => {
+    if (!user) return '/login';
+    if (user.role === 'admin') return '/admin/dashboard';
+    if (user.role === 'seller') return '/seller/dashboard';
+    return '/user/dashboard';
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800">
       <header className="sticky top-0 z-50 border-b border-orange-100 bg-white/95 backdrop-blur">
@@ -77,7 +84,10 @@ export default function MarketplaceLayout({ children }) {
               <Link href="/login" className="rounded-full border border-orange-200 px-3 py-1.5 hover:bg-orange-50">Login / Signup</Link>
             ) : (
               <>
-                <Link href="/user/dashboard" className="rounded-full border border-slate-200 px-3 py-1.5 hover:bg-slate-100">{user.name}</Link>
+                {user.role === 'user' && (
+                  <Link href="/become-seller" className="rounded-full border border-orange-200 px-3 py-1.5 hover:bg-orange-50">Become Seller</Link>
+                )}
+                <Link href={getDashboardHref()} className="rounded-full border border-slate-200 px-3 py-1.5 hover:bg-slate-100">{user.name}</Link>
                 <button
                   type="button"
                   onClick={() => {

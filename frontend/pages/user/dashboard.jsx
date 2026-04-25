@@ -43,6 +43,16 @@ export default function UserDashboard() {
             </ul>
           )}
         </section>
+
+        <section className="rounded-2xl border border-slate-200 bg-white p-4">
+          <h2 className="text-lg font-bold">Seller Access & Verified Badge</h2>
+          <p className="mt-2 text-sm text-slate-600">
+            Want to sell on OpenBazar? Submit your KYC and bank details, then request a verified badge.
+          </p>
+          <Link href="/become-seller" className="mt-3 inline-block rounded-xl bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600">
+            Become a Seller
+          </Link>
+        </section>
       </main>
     </MarketplaceLayout>
   );

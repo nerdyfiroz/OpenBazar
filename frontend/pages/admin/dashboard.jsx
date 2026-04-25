@@ -2,12 +2,16 @@ import { useEffect, useMemo, useState } from 'react';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+const API_ORIGIN = API_BASE.replace(/\/api\/?$/, '');
 
 export default function AdminDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [users, setUsers] = useState([]);
+  const [sellerApplications, setSellerApplications] = useState([]);
+  const [badgeRequests, setBadgeRequests] = useState([]);
+  const [verificationFee, setVerificationFee] = useState(0);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [statusNote, setStatusNote] = useState('');
@@ -34,7 +38,7 @@ export default function AdminDashboard() {
     setMessage('');
 
     try {
-      const [dashRes, productRes, orderRes, userRes] = await Promise.all([
+      const [dashRes, productRes, orderRes, userRes, sellerAppRes, badgeReqRes, feeRes] = await Promise.all([
         fetch(`${API_BASE}/dashboard/admin`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
@@ -46,10 +50,19 @@ export default function AdminDashboard() {
         }),
         fetch(`${API_BASE}/auth/users`, {
           headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE}/auth/admin/seller-applications`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE}/auth/admin/seller-verification-requests`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        fetch(`${API_BASE}/auth/admin/seller-verification-fee`, {
+          headers: { Authorization: `Bearer ${token}` }
         })
       ]);
 
-      if (!dashRes.ok || !productRes.ok || !orderRes.ok || !userRes.ok) {
+      if (!dashRes.ok || !productRes.ok || !orderRes.ok || !userRes.ok || !sellerAppRes.ok || !badgeReqRes.ok || !feeRes.ok) {
         throw new Error('Failed to load admin data. Ensure you are logged in as admin.');
       }
 
@@ -57,10 +70,16 @@ export default function AdminDashboard() {
       const productData = await productRes.json();
       const orderData = await orderRes.json();
       const userData = await userRes.json();
+      const sellerAppData = await sellerAppRes.json();
+      const badgeReqData = await badgeReqRes.json();
+      const feeData = await feeRes.json();
       setDashboard(dashData);
       setProducts(normalizeList(productData, 'products'));
       setOrders(normalizeList(orderData, 'orders'));
       setUsers(normalizeList(userData, 'users'));
+      setSellerApplications(normalizeList(sellerAppData, 'users'));
+      setBadgeRequests(normalizeList(badgeReqData, 'users'));
+      setVerificationFee(Number(feeData.fee || 0));
     } catch (err) {
       setMessage(err.message || 'Failed to load data');
     } finally {
@@ -120,6 +139,83 @@ export default function AdminDashboard() {
       setMessage('Order updated');
     } catch (err) {
       setMessage(err.message || 'Order update failed');
+    }
+  };
+
+  const deleteProduct = async (productId) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/products/admin/${productId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Product delete failed');
+      setProducts((prev) => prev.filter((p) => p._id !== productId));
+      setMessage('Seller post deleted successfully');
+    } catch (err) {
+      setMessage(err.message || 'Product delete failed');
+    }
+  };
+
+  const reviewSellerApplication = async (userId, status) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/auth/admin/seller-applications/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ status })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to review seller application');
+      setMessage(data.message || 'Seller application reviewed');
+      fetchData();
+    } catch (err) {
+      setMessage(err.message || 'Failed to review seller application');
+    }
+  };
+
+  const updateVerificationFee = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/auth/admin/seller-verification-fee`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ amount: Number(verificationFee || 0) })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update verification fee');
+      setVerificationFee(Number(data.fee || 0));
+      setMessage('Verified badge subscription fee updated');
+      fetchData();
+    } catch (err) {
+      setMessage(err.message || 'Failed to update verification fee');
+    }
+  };
+
+  const reviewVerifiedBadge = async (userId, action, waiveFee = false) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/auth/admin/sellers/${userId}/verified-badge`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ action, waiveFee })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update verified badge');
+      setMessage('Verified badge status updated');
+      fetchData();
+    } catch (err) {
+      setMessage(err.message || 'Failed to update verified badge');
     }
   };
 
@@ -240,17 +336,130 @@ export default function AdminDashboard() {
                       />
                     </td>
                     <td className="py-2 pr-3">
-                      <button
-                        className="rounded bg-black px-3 py-1 text-white"
-                        onClick={() => updateProduct(p._id, {
-                          price: p.price,
-                          discountPrice: p.discountPrice,
-                          isApproved: p.isApproved,
-                          isActive: p.isActive
-                        })}
-                      >
-                        Save
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          className="rounded bg-black px-3 py-1 text-white"
+                          onClick={() => updateProduct(p._id, {
+                            price: p.price,
+                            discountPrice: p.discountPrice,
+                            isApproved: p.isApproved,
+                            isActive: p.isActive
+                          })}
+                        >
+                          Save
+                        </button>
+                        <button
+                          className="rounded bg-red-600 px-3 py-1 text-white"
+                          onClick={() => deleteProduct(p._id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+
+          <section className="rounded-lg border border-gray-200 bg-white p-4">
+            <h2 className="text-lg font-semibold mb-3">Verified Badge Subscription Fee</h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <input
+                className="w-48 rounded border border-slate-200 px-3 py-2 text-sm"
+                type="number"
+                min="0"
+                step="0.01"
+                value={verificationFee}
+                onChange={(e) => setVerificationFee(e.target.value)}
+              />
+              <button className="rounded bg-black px-4 py-2 text-sm text-white" onClick={updateVerificationFee}>
+                Update Fee
+              </button>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-gray-200 bg-white p-4 overflow-x-auto">
+            <h2 className="text-lg font-semibold mb-3">Seller Onboarding Applications</h2>
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left border-b">
+                  <th className="py-2 pr-3">Name</th>
+                  <th className="py-2 pr-3">Identity</th>
+                  <th className="py-2 pr-3">Bank Details</th>
+                  <th className="py-2 pr-3">Phone</th>
+                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2 pr-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sellerApplications.map((u) => (
+                  <tr key={u._id} className="border-b align-top">
+                    <td className="py-2 pr-3">
+                      <p className="font-medium">{u.sellerApplication?.realName || u.name}</p>
+                      <p className="text-xs text-slate-500">{u.email}</p>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <p className="capitalize">{String(u.sellerApplication?.idType || '').replace('-', ' ')}</p>
+                      <p className="text-xs text-slate-500">{u.sellerApplication?.idNumber || '-'}</p>
+                    </td>
+                    <td className="py-2 pr-3 max-w-[240px] whitespace-pre-wrap">{u.sellerApplication?.bankDetails || '-'}</td>
+                    <td className="py-2 pr-3">{u.sellerApplication?.phoneNumber || '-'}</td>
+                    <td className="py-2 pr-3 capitalize">{u.sellerApplication?.status || 'none'}</td>
+                    <td className="py-2 pr-3">
+                      <div className="mb-2 flex flex-wrap gap-2 text-xs">
+                        {u.sellerApplication?.idDocumentUrl && (
+                          <a className="underline" href={`${API_ORIGIN}${u.sellerApplication.idDocumentUrl}`} target="_blank" rel="noreferrer">ID Doc</a>
+                        )}
+                        {u.sellerApplication?.photoUrl && (
+                          <a className="underline" href={`${API_ORIGIN}${u.sellerApplication.photoUrl}`} target="_blank" rel="noreferrer">Photo</a>
+                        )}
+                        {u.sellerApplication?.faceVerificationUrl && (
+                          <a className="underline" href={`${API_ORIGIN}${u.sellerApplication.faceVerificationUrl}`} target="_blank" rel="noreferrer">Face Verify</a>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <button className="rounded border px-2 py-1 text-xs" onClick={() => reviewSellerApplication(u._id, 'approved')}>Approve Seller</button>
+                        <button className="rounded border px-2 py-1 text-xs" onClick={() => reviewSellerApplication(u._id, 'rejected')}>Reject</button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </section>
+
+          <section className="rounded-lg border border-gray-200 bg-white p-4 overflow-x-auto">
+            <h2 className="text-lg font-semibold mb-3">Verified Badge Requests</h2>
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="text-left border-b">
+                  <th className="py-2 pr-3">Seller</th>
+                  <th className="py-2 pr-3">Tip Paid</th>
+                  <th className="py-2 pr-3">Required Fee</th>
+                  <th className="py-2 pr-3">Payment</th>
+                  <th className="py-2 pr-3">Badge Status</th>
+                  <th className="py-2 pr-3">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {badgeRequests.map((u) => (
+                  <tr key={u._id} className="border-b align-top">
+                    <td className="py-2 pr-3">
+                      <p className="font-medium">{u.name}</p>
+                      <p className="text-xs text-slate-500">{u.email}</p>
+                    </td>
+                    <td className="py-2 pr-3">৳{Number(u.sellerVerification?.tipPaidAmount || 0).toFixed(2)}</td>
+                    <td className="py-2 pr-3">৳{Number(u.sellerVerification?.subscriptionFeeAmount || 0).toFixed(2)}</td>
+                    <td className="py-2 pr-3 capitalize">{u.sellerVerification?.paymentStatus || 'unpaid'}</td>
+                    <td className="py-2 pr-3 capitalize">{u.sellerVerification?.badgeStatus || 'unverified'}</td>
+                    <td className="py-2 pr-3">
+                      <div className="flex flex-wrap gap-2">
+                        <button className="rounded border px-2 py-1 text-xs" onClick={() => reviewVerifiedBadge(u._id, 'verify', false)}>Verify (Paid)</button>
+                        <button className="rounded border px-2 py-1 text-xs" onClick={() => reviewVerifiedBadge(u._id, 'verify', true)}>Verify (Waive Fee)</button>
+                        <button className="rounded border px-2 py-1 text-xs" onClick={() => reviewVerifiedBadge(u._id, 'reject', false)}>Reject</button>
+                        <button className="rounded border px-2 py-1 text-xs" onClick={() => reviewVerifiedBadge(u._id, 'clear', false)}>Clear</button>
+                      </div>
                     </td>
                   </tr>
                 ))}

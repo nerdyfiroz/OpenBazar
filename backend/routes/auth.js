@@ -6,8 +6,10 @@ const crypto = require('crypto');
 const { body, validationResult } = require('express-validator');
 const User = require('../models/User');
 const Product = require('../models/Product');
+const SystemSetting = require('../models/SystemSetting');
 const { authenticate, authorize } = require('../middleware/auth');
 const { sendEmail, generateOTPTemplate } = require('../utils/emailSender');
+const { uploadSellerVerification } = require('../middleware/sellerVerificationUpload');
 
 const router = express.Router();
 
@@ -46,6 +48,25 @@ const getPasswordResetOtpArtifacts = () => {
   };
 };
 
+const SELLER_VERIFICATION_FEE_KEY = 'sellerVerificationFee';
+
+const getSellerVerificationFee = async () => {
+  const setting = await SystemSetting.findOne({ key: SELLER_VERIFICATION_FEE_KEY });
+  if (!setting) return 0;
+  return Number(setting.valueNumber || 0);
+};
+
+const setSellerVerificationFee = async (amount) => {
+  const numericAmount = Math.max(0, Number(amount) || 0);
+  const setting = await SystemSetting.findOneAndUpdate(
+    { key: SELLER_VERIFICATION_FEE_KEY },
+    { valueNumber: numericAmount, updatedAt: new Date() },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+
+  return Number(setting.valueNumber || 0);
+};
+
 // Register (User or Seller) with OTP
 router.post('/register', [
   body('email').isEmail().withMessage('Valid email is required'),
@@ -56,15 +77,17 @@ router.post('/register', [
   if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
   const { name, email, phone, password, role } = req.body;
-  if (role && !['user', 'seller'].includes(role)) return res.status(400).json({ message: 'Invalid role' });
+  if (role && role !== 'user') {
+    return res.status(400).json({ message: 'Direct seller registration is disabled. Please register as user and apply for seller.' });
+  }
 
   try {
     let user = await User.findOne({ email });
     if (user && user.isVerified) return res.status(400).json({ message: 'Email already registered and verified' });
 
     const hash = await bcrypt.hash(password, 10);
-    const userRole = role || 'user';
-    const isBlocked = userRole === 'seller';
+    const userRole = 'user';
+    const isBlocked = false;
     
     const {
       otp,
@@ -82,6 +105,33 @@ router.post('/register', [
       user.password = hash;
       user.role = userRole;
       user.isBlocked = isBlocked;
+      user.isSellerVerifiedBadge = false;
+      user.sellerApplication = {
+        status: 'none',
+        realName: '',
+        idType: '',
+        idNumber: '',
+        bankDetails: '',
+        phoneNumber: '',
+        photoUrl: '',
+        faceVerificationUrl: '',
+        idDocumentUrl: '',
+        submittedAt: null,
+        reviewedAt: null,
+        reviewNote: ''
+      };
+      user.sellerVerification = {
+        badgeStatus: 'unverified',
+        subscriptionFeeAmount: 0,
+        tipPaidAmount: 0,
+        paymentStatus: 'unpaid',
+        transactionRef: '',
+        requestedAt: null,
+        verifiedAt: null,
+        rejectedAt: null,
+        reviewedBy: null,
+        note: ''
+      };
       user.otp = otp;
       user.otpExpiry = otpExpiry;
       user.emailVerificationTokenHash = emailVerificationTokenHash;
@@ -92,6 +142,7 @@ router.post('/register', [
         name, email, phone, password: hash, 
         role: userRole,
         isBlocked,
+        isSellerVerifiedBadge: false,
         otp,
         otpExpiry,
         emailVerificationTokenHash,
@@ -124,7 +175,7 @@ router.get('/verify-email-link', async (req, res) => {
       return res.json({
         message: 'Email already verified',
         token: existingToken,
-        user: { id: user._id, name: user.name, role: user.role }
+        user: { id: user._id, name: user.name, role: user.role, isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge) }
       });
     }
 
@@ -147,7 +198,7 @@ router.get('/verify-email-link', async (req, res) => {
     res.json({
       message: 'Email verified successfully',
       token: authToken,
-      user: { id: user._id, name: user.name, role: user.role }
+      user: { id: user._id, name: user.name, role: user.role, isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge) }
     });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -179,7 +230,7 @@ router.post('/verify-otp', [
     await user.save();
 
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ message: 'Email verified successfully', token, user: { id: user._id, name: user.name, role: user.role } });
+    res.json({ message: 'Email verified successfully', token, user: { id: user._id, name: user.name, role: user.role, isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge) } });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -286,7 +337,119 @@ router.post('/login', async (req, res) => {
     if (!match) return res.status(400).json({ message: 'Invalid credentials', canResetPassword: true });
     if (user.isBlocked) return res.status(403).json({ message: 'Account blocked or pending approval' });
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user._id, name: user.name, role: user.role } });
+    res.json({ token, user: { id: user._id, name: user.name, role: user.role, isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge) } });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Seller onboarding and verification subscription
+router.get('/seller-verification-fee', authenticate, async (req, res) => {
+  try {
+    const fee = await getSellerVerificationFee();
+    res.json({ fee });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/seller-status', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const fee = await getSellerVerificationFee();
+    res.json({
+      role: user.role,
+      isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge),
+      sellerApplication: user.sellerApplication,
+      sellerVerification: user.sellerVerification,
+      verificationFee: fee
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/seller/apply', authenticate, uploadSellerVerification, [
+  body('realName').notEmpty().withMessage('Real name is required'),
+  body('idType').isIn(['national-id', 'driving-license', 'passport']).withMessage('Valid ID type is required'),
+  body('idNumber').notEmpty().withMessage('ID number is required'),
+  body('bankDetails').notEmpty().withMessage('Bank details are required'),
+  body('phoneNumber').notEmpty().withMessage('Phone number is required')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.role === 'admin') return res.status(400).json({ message: 'Admin account cannot apply as seller' });
+
+    const idDocument = req.files?.idDocument?.[0];
+    const photo = req.files?.photo?.[0];
+    const faceVerification = req.files?.faceVerification?.[0];
+
+    if (!idDocument || !photo || !faceVerification) {
+      return res.status(400).json({ message: 'ID document, photo, and face verification photo are required' });
+    }
+
+    user.sellerApplication = {
+      status: 'pending',
+      realName: req.body.realName,
+      idType: req.body.idType,
+      idNumber: req.body.idNumber,
+      bankDetails: req.body.bankDetails,
+      phoneNumber: req.body.phoneNumber,
+      photoUrl: `/uploads/seller-verification/${photo.filename}`,
+      faceVerificationUrl: `/uploads/seller-verification/${faceVerification.filename}`,
+      idDocumentUrl: `/uploads/seller-verification/${idDocument.filename}`,
+      submittedAt: new Date(),
+      reviewedAt: null,
+      reviewNote: ''
+    };
+    user.isBlocked = false;
+    await user.save();
+
+    res.json({ message: 'Seller application submitted successfully', sellerApplication: user.sellerApplication });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.post('/seller/verification/request', authenticate, [
+  body('tipAmount').isFloat({ min: 0 }).withMessage('Tip amount must be valid'),
+  body('transactionRef').notEmpty().withMessage('Transaction reference is required')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.role !== 'seller') return res.status(403).json({ message: 'Only sellers can request verified badge' });
+
+    const fee = await getSellerVerificationFee();
+    const tipAmount = Number(req.body.tipAmount || 0);
+    if (tipAmount < fee) {
+      return res.status(400).json({ message: `Subscription tip must be at least ৳${fee.toFixed(2)}` });
+    }
+
+    user.sellerVerification = {
+      badgeStatus: 'pending',
+      subscriptionFeeAmount: fee,
+      tipPaidAmount: tipAmount,
+      paymentStatus: fee === 0 ? 'waived' : 'paid',
+      transactionRef: String(req.body.transactionRef || '').trim(),
+      requestedAt: new Date(),
+      verifiedAt: null,
+      rejectedAt: null,
+      reviewedBy: null,
+      note: String(req.body.note || '').trim()
+    };
+    await user.save();
+
+    res.json({ message: 'Verified badge request submitted', sellerVerification: user.sellerVerification });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
@@ -319,6 +482,158 @@ router.put('/users/:id/block', authenticate, authorize(['admin']), async (req, r
     res.json({
       message: 'User status updated',
       user: { id: user._id, name: user.name, email: user.email, role: user.role, isBlocked: user.isBlocked }
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/admin/seller-applications', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const users = await User.find({
+      role: { $ne: 'admin' },
+      'sellerApplication.status': { $in: ['pending', 'approved', 'rejected'] }
+    }).select('-password').sort({ 'sellerApplication.submittedAt': -1, createdAt: -1 });
+
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/admin/seller-applications/:id', authenticate, authorize(['admin']), [
+  body('status').isIn(['approved', 'rejected']).withMessage('Status must be approved or rejected')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const reviewStatus = req.body.status;
+    const reviewNote = String(req.body.reviewNote || '').trim();
+
+    user.sellerApplication.status = reviewStatus;
+    user.sellerApplication.reviewedAt = new Date();
+    user.sellerApplication.reviewNote = reviewNote;
+
+    if (reviewStatus === 'approved') {
+      user.role = 'seller';
+      user.isBlocked = false;
+    }
+
+    await user.save();
+
+    res.json({
+      message: reviewStatus === 'approved' ? 'Seller application approved' : 'Seller application rejected',
+      user: {
+        id: user._id,
+        role: user.role,
+        sellerApplication: user.sellerApplication
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/admin/seller-verification-requests', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const users = await User.find({
+      role: { $in: ['seller'] },
+      'sellerVerification.badgeStatus': { $in: ['pending', 'verified', 'rejected'] }
+    }).select('-password').sort({ 'sellerVerification.requestedAt': -1, createdAt: -1 });
+
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.get('/admin/seller-verification-fee', authenticate, authorize(['admin']), async (req, res) => {
+  try {
+    const fee = await getSellerVerificationFee();
+    res.json({ fee });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/admin/seller-verification-fee', authenticate, authorize(['admin']), [
+  body('amount').isFloat({ min: 0 }).withMessage('Amount must be a positive number')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  try {
+    const fee = await setSellerVerificationFee(req.body.amount);
+    res.json({ message: 'Seller verification fee updated', fee });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.put('/admin/sellers/:id/verified-badge', authenticate, authorize(['admin']), [
+  body('action').isIn(['verify', 'reject', 'clear']).withMessage('Invalid action')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (user.role !== 'seller') return res.status(400).json({ message: 'Target user is not a seller' });
+
+    const action = req.body.action;
+    const waiveFee = Boolean(req.body.waiveFee);
+    const note = String(req.body.note || '').trim();
+
+    if (action === 'verify') {
+      const requiredFee = Number(user.sellerVerification?.subscriptionFeeAmount || 0);
+      const paidAmount = Number(user.sellerVerification?.tipPaidAmount || 0);
+      const hasPaidEnough = paidAmount >= requiredFee;
+
+      if (!waiveFee && !hasPaidEnough) {
+        return res.status(400).json({
+          message: `Seller has not paid required subscription fee (required ৳${requiredFee.toFixed(2)}). Use waiveFee=true to bypass.`
+        });
+      }
+
+      user.isSellerVerifiedBadge = true;
+      user.sellerVerification.badgeStatus = 'verified';
+      user.sellerVerification.paymentStatus = waiveFee ? 'waived' : (requiredFee === 0 ? 'waived' : 'paid');
+      user.sellerVerification.verifiedAt = new Date();
+      user.sellerVerification.rejectedAt = null;
+      user.sellerVerification.reviewedBy = req.user._id;
+      user.sellerVerification.note = note;
+    } else if (action === 'reject') {
+      user.isSellerVerifiedBadge = false;
+      user.sellerVerification.badgeStatus = 'rejected';
+      user.sellerVerification.rejectedAt = new Date();
+      user.sellerVerification.verifiedAt = null;
+      user.sellerVerification.reviewedBy = req.user._id;
+      user.sellerVerification.note = note;
+    } else {
+      user.isSellerVerifiedBadge = false;
+      user.sellerVerification.badgeStatus = 'unverified';
+      user.sellerVerification.paymentStatus = 'unpaid';
+      user.sellerVerification.requestedAt = null;
+      user.sellerVerification.verifiedAt = null;
+      user.sellerVerification.rejectedAt = null;
+      user.sellerVerification.reviewedBy = req.user._id;
+      user.sellerVerification.note = note;
+    }
+
+    await user.save();
+
+    res.json({
+      message: 'Seller verified badge status updated',
+      user: {
+        id: user._id,
+        isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge),
+        sellerVerification: user.sellerVerification
+      }
     });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

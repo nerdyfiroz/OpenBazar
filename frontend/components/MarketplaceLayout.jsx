@@ -50,7 +50,13 @@ export default function MarketplaceLayout({ children }) {
     <div className="min-h-screen bg-slate-50 text-slate-800">
       <header className="sticky top-0 z-50 border-b border-orange-100 bg-white/95 backdrop-blur">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-3 px-3 py-3 md:px-6">
-          <Link href="/" className="text-2xl font-black text-orange-500">OpenBazar</Link>
+          <Link href="/" className="inline-flex items-center">
+            <img
+              src="/api/logo"
+              alt="OpenBazar"
+              className="h-12 w-auto max-w-[220px] object-contain"
+            />
+          </Link>
 
           <form onSubmit={submitSearch} className="relative min-w-[220px] flex-1">
             <input

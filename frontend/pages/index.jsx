@@ -64,7 +64,7 @@ export default function Home() {
     <MarketplaceLayout>
       <section className="mx-auto grid max-w-7xl gap-4 px-4 py-6 md:grid-cols-3 md:px-6">
         <div className="rounded-3xl bg-gradient-to-r from-orange-500 to-amber-500 p-8 text-white md:col-span-2">
-          <p className="mb-2 inline-block rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">Daraz-style Mega Campaign</p>
+          <p className="mb-2 inline-block rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">Mega Campaign</p>
           <h1 className="text-3xl font-black md:text-5xl">Bangladesh’s Favorite Marketplace</h1>
           <p className="mt-3 max-w-xl text-sm text-orange-100">Up to 70% off on electronics, fashion, beauty, and more. Fast nationwide delivery.</p>
           <div className="mt-5 flex flex-wrap gap-2">

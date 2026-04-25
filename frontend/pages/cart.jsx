@@ -96,7 +96,7 @@ function CouponForm({ applyCoupon }) {
       }}
       className="space-y-2"
     >
-      <input value={code} onChange={(e) => setCode(e.target.value)} className="input" placeholder="DARAZ10 / EID150" />
+      <input value={code} onChange={(e) => setCode(e.target.value)} className="input" placeholder="MEGA10 / EID150" />
       {msg && <p className="text-xs text-slate-500">{msg}</p>}
       <button type="submit" className="w-full rounded-lg bg-slate-900 px-3 py-2 text-white">Apply</button>
     </form>

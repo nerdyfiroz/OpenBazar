@@ -4,7 +4,7 @@ const StoreContext = createContext(null);
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
 const COUPONS = {
-  DARAZ10: { discountPercent: 10, title: 'Daraz Style 10% Off' },
+  MEGA10: { discountPercent: 10, title: 'Mega Style 10% Off' },
   EID150: { flat: 150, title: 'Eid Campaign ৳150 Off' }
 };
 

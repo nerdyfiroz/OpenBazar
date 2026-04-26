@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
 import MarketplaceLayout from '../components/MarketplaceLayout';
 import { useStore } from '../components/StoreProvider';
-import { BANGLADESH_AREAS, BANGLADESH_DIVISIONS, getDistrictOptions, getUpazilaOptions } from '../utils/bdAddressOptions';
+import { BANGLADESH_AREAS, BANGLADESH_DIVISIONS, getDistrictOptions, getUpazilaOptions, getUnionOptions } from '../utils/bdAddressOptions';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -18,6 +18,7 @@ export default function Checkout() {
     division: '',
     district: '',
     upazila: '',
+    union: '',
     ward: '',
     area: '',
     locationType: '',
@@ -29,6 +30,7 @@ export default function Checkout() {
 
   const districtOptions = useMemo(() => getDistrictOptions(form.division), [form.division]);
   const upazilaOptions = useMemo(() => getUpazilaOptions(form.district), [form.district]);
+  const unionOptions = useMemo(() => getUnionOptions(form.upazila), [form.upazila]);
   const totalItems = useMemo(() => cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0), [cart]);
 
   const effectiveUser = user || null;
@@ -64,7 +66,7 @@ export default function Checkout() {
         const couponRes = await fetch(`${API_BASE}/coupons/validate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: coupon.code, subtotal })
+          body: JSON.stringify({ code: coupon.code, subtotal, totalItems })
         });
         const couponData = await couponRes.json();
         if (!couponRes.ok) {
@@ -83,9 +85,10 @@ export default function Checkout() {
           division: form.division,
           district: form.district,
           upazila: form.upazila,
+          union: form.union,
           ward: form.ward,
           area: form.area,
-          fullAddress: [form.locationType, form.ward, form.area, form.address].filter(Boolean).join(', '),
+          fullAddress: [form.locationType, form.union, form.ward, form.area, form.address].filter(Boolean).join(', '),
           couponCode: coupon?.code || undefined,
           payable: total
         }
@@ -155,7 +158,7 @@ export default function Checkout() {
             <select
               className="input"
               value={form.upazila}
-              onChange={(e) => setForm((p) => ({ ...p, upazila: e.target.value }))}
+              onChange={(e) => setForm((p) => ({ ...p, upazila: e.target.value, union: '' }))}
               disabled={!upazilaOptions.length}
               required
             >
@@ -168,8 +171,27 @@ export default function Checkout() {
                 className="input"
                 placeholder="Type your upazila manually"
                 value={form.upazila}
-                onChange={(e) => setForm((p) => ({ ...p, upazila: e.target.value }))}
+                onChange={(e) => setForm((p) => ({ ...p, upazila: e.target.value, union: '' }))}
                 required
+              />
+            )}
+
+            {/* Union / Paurashava dropdown — appears when unions exist for the selected upazila */}
+            {unionOptions.length > 0 ? (
+              <select
+                className="input"
+                value={form.union}
+                onChange={(e) => setForm((p) => ({ ...p, union: e.target.value }))}
+              >
+                <option value="">Select Union / Paurashava (optional)</option>
+                {unionOptions.map((u) => <option key={u} value={u}>{u}</option>)}
+              </select>
+            ) : (
+              <input
+                className="input"
+                placeholder="Union / Paurashava (optional)"
+                value={form.union}
+                onChange={(e) => setForm((p) => ({ ...p, union: e.target.value }))}
               />
             )}
 
@@ -228,16 +250,19 @@ export default function Checkout() {
             </div>
           )}
 
-          <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
-            <p className="font-semibold text-amber-800">Transaction ID</p>
-            <p className="mt-1 text-amber-700">Required for mobile banking send-money orders.</p>
-            <input
-              className="input mt-3 bg-white"
-              placeholder="If sent money, enter Transaction ID (optional)"
-              value={form.transactionId}
-              onChange={(e) => setForm((p) => ({ ...p, transactionId: e.target.value }))}
-            />
-          </div>
+          {form.paymentMethod !== 'COD' && (
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm">
+              <p className="font-semibold text-amber-800">Transaction ID <span className="text-red-500">*</span></p>
+              <p className="mt-1 text-amber-700">Required — enter your send-money Transaction ID for verification.</p>
+              <input
+                className="input mt-3 bg-white"
+                placeholder="Enter Transaction ID"
+                value={form.transactionId}
+                onChange={(e) => setForm((p) => ({ ...p, transactionId: e.target.value }))}
+                required
+              />
+            </div>
+          )}
 
           <button type="submit" disabled={loading} className="mt-5 rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-70">
             {loading ? 'Placing Order...' : 'Confirm Order'}

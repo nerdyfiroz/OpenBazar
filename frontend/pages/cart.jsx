@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import MarketplaceLayout from '../components/MarketplaceLayout';
 import { useStore } from '../components/StoreProvider';
+import { resolveImageSrc, FALLBACK_IMAGE } from '../utils/resolveImageSrc';
 
 export default function Cart() {
   const {
@@ -36,7 +37,7 @@ export default function Cart() {
             <div className="space-y-3">
               {cart.map((item) => (
                 <article key={item._id} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3">
-                  <img src={item.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600'} alt={item.name} className="h-16 w-16 rounded-lg object-cover" />
+                  <img src={resolveImageSrc(item.images?.[0] || item.photos?.[0])} alt={item.name} className="h-16 w-16 rounded-lg object-cover" onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }} />
                   <div className="min-w-[200px] flex-1">
                     <p className="font-semibold">{item.name}</p>
                     <p className="text-sm text-orange-500">৳{Number(item.unitPrice).toFixed(0)}</p>

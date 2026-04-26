@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
 import ProductCard from '../../components/ProductCard';
 import { useStore } from '../../components/StoreProvider';
+import { resolveImageSrc, FALLBACK_IMAGE } from '../../utils/resolveImageSrc';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -92,15 +93,21 @@ export default function ProductDetails() {
           <div>
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
               <img
-                src={product.images?.[activeImage] || product.images?.[0] || 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=1200'}
+                src={resolveImageSrc(product.images?.[activeImage] || product.images?.[0])}
                 alt={product.name}
                 className="h-80 w-full object-cover transition duration-300 hover:scale-110"
+                onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
               />
             </div>
             <div className="mt-3 grid grid-cols-4 gap-2">
-              {(product.images?.length ? product.images : [product.images?.[0]]).filter(Boolean).map((img, idx) => (
+              {(product.images?.length ? product.images : []).filter(Boolean).map((img, idx) => (
                 <button key={img} type="button" onClick={() => setActiveImage(idx)} className={`overflow-hidden rounded-xl border ${activeImage === idx ? 'border-orange-500' : 'border-slate-200'}`}>
-                  <img src={img} alt={`${product.name}-${idx + 1}`} className="h-20 w-full object-cover" />
+                  <img
+                    src={resolveImageSrc(img)}
+                    alt={`${product.name}-${idx + 1}`}
+                    className="h-20 w-full object-cover"
+                    onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
+                  />
                 </button>
               ))}
             </div>

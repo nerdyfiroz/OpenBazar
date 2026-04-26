@@ -1,23 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { useStore } from './StoreProvider';
-
-const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800';
-
-/**
- * Resolve a product image src to a full URL.
- * - If it's already an absolute URL (http/https), use it as-is.
- * - If it's a relative /uploads/ path, proxy it through Next.js rewrites
- *   (which forward /uploads/* → backend /uploads/*), so it loads correctly
- *   regardless of the backend port.
- * - Falls back to the Unsplash placeholder if empty/null.
- */
-function resolveImageSrc(src) {
-  if (!src) return FALLBACK_IMAGE;
-  if (src.startsWith('http://') || src.startsWith('https://')) return src;
-  // Relative path — served via Next.js /uploads/* rewrite → backend
-  return src.startsWith('/') ? src : `/${src}`;
-}
+import { resolveImageSrc, FALLBACK_IMAGE } from '../utils/resolveImageSrc';
 
 export default function ProductCard({ product }) {
   const { addToCart, toggleWishlist, wishlist } = useStore();

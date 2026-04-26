@@ -281,27 +281,7 @@ export default function SellerDashboard() {
             {orders.length === 0 ? <p className="text-sm text-slate-500">No orders yet.</p> : (
               <div className="space-y-3">
                 {orders.map((o) => (
-                  <details key={o._id} className="rounded-xl border border-slate-200">
-                    <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-medium">
-                      <span>{o.customer?.name || 'Customer'} · {new Date(o.createdAt).toLocaleDateString()}</span>
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-orange-600">৳{Number(o.myRevenue || 0).toFixed(0)}</span>
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_COLOR[o.status] || 'bg-slate-100 text-slate-600'}`}>{o.status}</span>
-                      </div>
-                    </summary>
-                    <div className="border-t border-slate-100 px-4 pb-3 pt-2 text-sm text-slate-700">
-                      <p><strong>Payment:</strong> {o.paymentMethod}</p>
-                      <p><strong>Address:</strong> {o.shippingAddress?.fullAddress || '—'}</p>
-                      <ul className="mt-2 space-y-1">
-                        {(o.myItems || []).map((item, i) => (
-                          <li key={i} className="flex justify-between">
-                            <span>{item.name || 'Product'} × {item.quantity || 1}</span>
-                            <span>৳{(Number(item.price || 0) * Number(item.quantity || 1)).toFixed(0)}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  </details>
+                  <OrderRow key={o._id} order={o} token={token} apiBase={API_BASE} statusColor={STATUS_COLOR} onMsg={setMsg} />
                 ))}
               </div>
             )}
@@ -422,5 +402,103 @@ function TextArea({ label, className = '', onChange, ...props }) {
       <span className="mb-1 block text-sm font-medium text-slate-700">{label}</span>
       <textarea className="input min-h-[100px]" {...props} onChange={(e) => onChange?.(e.target.value)} />
     </label>
+  );
+}
+
+const COURIERS = ['Pathao', 'Steadfast', 'RedX', 'eCourier', 'Sundarban', 'SA Paribahan', 'Janani', 'Other'];
+
+function OrderRow({ order: o, token, apiBase, statusColor, onMsg }) {
+  const [open, setOpen] = useState(false);
+  const [tracking, setTracking] = useState({
+    courierService: o.tracking?.courierService || '',
+    trackingId: o.tracking?.trackingId || '',
+    trackingUrl: o.tracking?.trackingUrl || ''
+  });
+  const [saving, setSaving] = useState(false);
+
+  const saveTracking = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${apiBase}/orders/seller/${o._id}/tracking`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(tracking)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      onMsg('✅ Tracking info saved successfully!');
+    } catch (err) {
+      onMsg(err.message || 'Failed to save tracking');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-slate-200 overflow-hidden">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex w-full cursor-pointer flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-medium hover:bg-slate-50"
+      >
+        <span className="text-left">{o.customer?.name || 'Customer'} · {new Date(o.createdAt).toLocaleDateString()}</span>
+        <div className="flex items-center gap-3">
+          <span className="font-bold text-orange-600">৳{Number(o.myRevenue || 0).toFixed(0)}</span>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusColor[o.status] || 'bg-slate-100 text-slate-600'}`}>{o.status}</span>
+          <span className="text-slate-400">{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+
+      {open && (
+        <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-4">
+          {/* Order info */}
+          <div className="text-sm text-slate-700 space-y-1">
+            <p><strong>Payment:</strong> {o.paymentMethod}</p>
+            <p><strong>Address:</strong> {o.shippingAddress?.fullAddress || '—'}</p>
+            <ul className="mt-2 space-y-1 border border-slate-100 rounded-lg p-2 bg-slate-50">
+              {(o.myItems || []).map((item, i) => (
+                <li key={i} className="flex justify-between text-xs">
+                  <span>{item.name || 'Product'} × {item.quantity || 1}</span>
+                  <span>৳{(Number(item.price || 0) * Number(item.quantity || 1)).toFixed(0)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Tracking form */}
+          <div className="rounded-xl bg-orange-50 border border-orange-200 p-4">
+            <p className="mb-3 text-sm font-bold text-orange-700">🚚 Set Courier Tracking</p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">Courier Service</label>
+                <select className="input text-sm" value={tracking.courierService}
+                  onChange={(e) => setTracking((t) => ({ ...t, courierService: e.target.value }))}>
+                  <option value="">Select courier</option>
+                  {COURIERS.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">Parcel / Waybill ID</label>
+                <input className="input text-sm font-mono" placeholder="e.g. PH-1234567"
+                  value={tracking.trackingId}
+                  onChange={(e) => setTracking((t) => ({ ...t, trackingId: e.target.value }))} />
+              </div>
+              <div className="sm:col-span-2">
+                <label className="mb-1 block text-xs font-medium text-slate-600">Tracking URL (optional)</label>
+                <input className="input text-sm" placeholder="https://steadfast.com.bd/track?id=..."
+                  value={tracking.trackingUrl}
+                  onChange={(e) => setTracking((t) => ({ ...t, trackingUrl: e.target.value }))} />
+              </div>
+            </div>
+            <button onClick={saveTracking} disabled={saving || !tracking.trackingId}
+              className="mt-3 rounded-lg bg-orange-500 px-4 py-2 text-xs font-bold text-white hover:bg-orange-600 disabled:opacity-50">
+              {saving ? 'Saving...' : '💾 Save Tracking'}
+            </button>
+            {tracking.trackingId && (
+              <p className="mt-2 text-xs text-green-600">✓ Tracking ID set — buyer can see this on their orders page.</p>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

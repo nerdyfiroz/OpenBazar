@@ -55,9 +55,15 @@ const OrderSchema = new mongoose.Schema({
   },
   statusHistory: [OrderStatusHistorySchema],
   isPaid: { type: Boolean, default: false },
-  commission: Number, // Calculated
+  commission: Number,
+  // Courier tracking — set by admin or seller after shipping
+  tracking: {
+    courierService: { type: String, default: '' },  // e.g. "Pathao", "Steadfast", "RedX"
+    trackingId: { type: String, default: '' },       // Parcel/waybill ID
+    trackingUrl: { type: String, default: '' }       // Optional direct tracking link
+  },
   createdAt: { type: Date, default: Date.now },
-  // Upgrade: Add delivery info, courier, etc.
+  updatedAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Order', OrderSchema);

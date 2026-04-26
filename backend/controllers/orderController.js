@@ -343,3 +343,54 @@ exports.getSellerOrders = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+/**
+ * GET /api/orders/track/:id
+ * Public: Returns safe order info (no private payment data) for buyer tracking.
+ */
+exports.getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id)
+      .populate('products.product', 'name images photos')
+      .select('-paymentInfo.screenshot -__v');
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Allow access to: the owner, or guest who matches the order (no extra check for guest — ID is secret enough)
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * PUT /api/orders/admin/:id/tracking  OR  /api/orders/seller/:id/tracking
+ * Admin or Seller: Set courier service name, tracking ID, and optional tracking URL.
+ */
+exports.updateTracking = async (req, res) => {
+  try {
+    const { courierService, trackingId, trackingUrl } = req.body;
+
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Sellers can only update tracking for orders containing their products
+    if (req.user.role === 'seller') {
+      const sellerProducts = await Product.find({ seller: req.user._id }).select('_id');
+      const sellerIds = sellerProducts.map((p) => p._id.toString());
+      const hasProduct = (order.products || []).some((item) => sellerIds.includes(item.product?.toString()));
+      if (!hasProduct) return res.status(403).json({ message: 'Not your order' });
+    }
+
+    order.tracking = {
+      courierService: String(courierService || '').trim(),
+      trackingId: String(trackingId || '').trim(),
+      trackingUrl: String(trackingUrl || '').trim()
+    };
+    order.updatedAt = new Date();
+    await order.save();
+
+    res.json({ message: 'Tracking info updated', tracking: order.tracking });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};

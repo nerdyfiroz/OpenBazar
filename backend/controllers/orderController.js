@@ -302,3 +302,44 @@ exports.updateOrderStatusAdmin = async (req, res) => {
 };
 
 // Upgrade: Commission calculation, payout logic
+
+exports.getSellerOrders = async (req, res) => {
+  try {
+    const sellerProducts = await Product.find({ seller: req.user._id }).select('_id name');
+    const sellerProductIds = sellerProducts.map((p) => p._id.toString());
+
+    const orders = await Order.find({
+      'products.product': { $in: sellerProducts.map((p) => p._id) }
+    }).sort({ createdAt: -1 });
+
+    const enriched = orders.map((order) => {
+      const myItems = (order.products || []).filter((item) =>
+        sellerProductIds.includes(item.product?.toString())
+      );
+      const myRevenue = myItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 1), 0);
+      return {
+        _id: order._id,
+        status: order.status,
+        paymentMethod: order.paymentMethod,
+        createdAt: order.createdAt,
+        customer: order.guestCustomer || { name: 'Registered User' },
+        shippingAddress: order.shippingAddress,
+        myItems,
+        myRevenue
+      };
+    });
+
+    const paidOrders = enriched.filter((o) =>
+      ['delivered', 'shipped', 'paid', 'confirmed', 'processing'].includes(o.status)
+    );
+    const totalRevenue = paidOrders.reduce((sum, o) => sum + o.myRevenue, 0);
+    const totalSold = paidOrders.reduce((sum, o) => sum + o.myItems.reduce((s, i) => s + Number(i.quantity || 1), 0), 0);
+
+    res.json({
+      orders: enriched,
+      stats: { totalOrders: enriched.length, totalRevenue, totalSold }
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};

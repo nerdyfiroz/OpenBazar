@@ -699,10 +699,10 @@ export default function AdminDashboard() {
                 className="rounded border border-slate-200 px-3 py-2 text-sm"
                 type="number"
                 min="0"
-                placeholder="Min items in cart (e.g. 4 = needs &gt;4 items)"
+                placeholder="Min items in cart (e.g. 4 = needs ≥4 items)"
                 value={couponForm.minItemCount}
                 onChange={(e) => onCouponFormChange('minItemCount', e.target.value)}
-                title="Coupon only applies when cart has MORE than this many items. 0 = no restriction."
+                title="Coupon only applies when cart has AT LEAST this many items. 0 = no restriction."
               />
               <input
                 className="rounded border border-slate-200 px-3 py-2 text-sm"

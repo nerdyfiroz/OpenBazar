@@ -53,11 +53,11 @@ function validateCouponDoc(coupon, subtotal, totalItems = 0) {
   if (subtotal < (coupon.minOrderAmount || 0)) {
     return { ok: false, message: `Minimum order amount is ৳${coupon.minOrderAmount}` };
   }
-  // Enforce minimum purchase item count (e.g. minItemCount=4 → requires more than 4 items)
-  if (coupon.minItemCount > 0 && Number(totalItems) <= coupon.minItemCount) {
+  // Enforce minimum purchase item count (e.g. minItemCount=4 → requires at least 4 items)
+  if (coupon.minItemCount > 0 && Number(totalItems) < coupon.minItemCount) {
     return {
       ok: false,
-      message: `This coupon requires more than ${coupon.minItemCount} item${coupon.minItemCount === 1 ? '' : 's'} in your cart`
+      message: `This coupon requires at least ${coupon.minItemCount} item${coupon.minItemCount === 1 ? '' : 's'} in your cart`
     };
   }
 

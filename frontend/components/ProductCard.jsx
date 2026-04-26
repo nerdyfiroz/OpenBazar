@@ -2,16 +2,34 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useStore } from './StoreProvider';
 
+const FALLBACK_IMAGE = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800';
+
+/**
+ * Resolve a product image src to a full URL.
+ * - If it's already an absolute URL (http/https), use it as-is.
+ * - If it's a relative /uploads/ path, proxy it through Next.js rewrites
+ *   (which forward /uploads/* → backend /uploads/*), so it loads correctly
+ *   regardless of the backend port.
+ * - Falls back to the Unsplash placeholder if empty/null.
+ */
+function resolveImageSrc(src) {
+  if (!src) return FALLBACK_IMAGE;
+  if (src.startsWith('http://') || src.startsWith('https://')) return src;
+  // Relative path — served via Next.js /uploads/* rewrite → backend
+  return src.startsWith('/') ? src : `/${src}`;
+}
+
 export default function ProductCard({ product }) {
   const { addToCart, toggleWishlist, wishlist } = useStore();
   const isWished = wishlist.some((item) => item._id === product._id);
   const hasDiscount = Number(product.discountPrice) > 0 && product.discountPrice < product.price;
+  const imageSrc = resolveImageSrc(product.images?.[0] || product.photos?.[0]);
 
   return (
     <article className="group rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
       <div className="relative overflow-hidden rounded-xl bg-slate-100 h-44 w-full">
         <Image
-          src={product.images?.[0] || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800'}
+          src={imageSrc}
           alt={product.name}
           fill
           sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"

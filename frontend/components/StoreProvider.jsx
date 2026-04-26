@@ -157,11 +157,14 @@ export function StoreProvider({ children }) {
     const normalized = code.toUpperCase().trim();
     if (!normalized) return { ok: false, message: 'Coupon code is required' };
 
+    // Total quantity across all cart items — needed for minItemCount validation
+    const totalItems = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+
     try {
       const res = await fetch(`${API_BASE}/coupons/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: normalized, subtotal })
+        body: JSON.stringify({ code: normalized, subtotal, totalItems })
       });
 
       const data = await res.json();

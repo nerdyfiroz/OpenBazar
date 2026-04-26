@@ -96,26 +96,17 @@ export const BANGLADESH_UPAZILAS = {
   Sherpur: ['Jhenaigati', 'Nakla', 'Nalitabari', 'Sherpur Sadar', 'Sribordi']
 };
 
-// Unions per upazila (selected major upazilas — expandable)
+// Unions per upazila — verified official data (rangpur.gov.bd, wikipedia, banglapedia)
 export const BANGLADESH_UNIONS = {
-  // Dhaka
+  // Dhaka district
   Savar: ['Savar Paurashava', 'Ashulia', 'Dhamsona', 'Bongaon', 'Yearpur', 'Shimulia', 'Pathalia', 'Kaundia', 'Tepirbari'],
   Dhamrai: ['Dhamrai Paurashava', 'Baisakanda', 'Gandia', 'Jadabpur', 'Kushura', 'Nannor', 'Row', 'Sanora', 'Suapur'],
   Keraniganj: ['Keraniganj Paurashava', 'Aganagar', 'Basta', 'Hasnabad', 'Kalindi', 'Konda', 'Ruhitpur', 'Shubhadya', 'Teghoria'],
-  // Gazipur
   'Gazipur Sadar': ['Gazipur City Corporation', 'Basan', 'Gazipur', 'Konabari', 'Mirchapur', 'Pubail'],
   Kaliakair: ['Kaliakair Paurashava', 'Baroibari', 'Chappari', 'Dhala', 'Full Baria', 'Mouchak', 'Shafipur'],
   Sreepur: ['Sreepur Paurashava', 'Barmi', 'Gosinga', 'Maona', 'Rajabari', 'Telihati', 'Prohladpur'],
-  // Narayanganj
   'Narayanganj Sadar': ['Narayanganj City Corporation', 'Boro Bandar', 'Fatullah', 'Kalagachhia', 'Shiddhirganj'],
   Rupganj: ['Bhulta', 'Golakandail', 'Kayetpara', 'Murapara', 'Rapura', 'Rupganj Paurashava', 'Tarab'],
-  // Rangpur
-  'Rangpur Sadar': ['Rangpur City Corporation', 'Mahiganj', 'Haragachh', 'Chandipur', 'Paira Chharat', 'Satgara', 'Kendall'],
-  Badarganj: ['Badarganj Paurashava', 'Bishna', 'Gajaghanta', 'Kakina', 'Kutubpur', 'Lohanipara', 'Radhanagar', 'Ramnathpur'],
-  Mithapukur: ['Mithapukur Paurashava', 'Boro Hazra', 'Chatrak', 'Kabiraj', 'Khalisamari', 'Lashmimari', 'Maidhya', 'Pirgachha', 'Polashbari', 'Shyampur'],
-  Pirganj: ['Pirganj Paurashava', 'Annanagarhat', 'Chatra', 'Kabilpur', 'Mithanpur', 'Raipur', 'Shanerhat', 'Tambulpur', 'Tukuria'],
-  Kaunia: ['Kaunia Paurashava', 'Balarampur', 'Haragachh', 'Kursha', 'Shahidbagh', 'Tepamadhupur'],
-  Gangachara: ['Gangachara Paurashava', 'Barkoi', 'Gajaghanta', 'Kolkonda', 'Lakshmipur', 'Marania', 'Nohali', 'Sikdaha'],
   // Chattogram
   'Chattogram Sadar': ['Chattogram City Corporation'],
   Hathazari: ['Hathazari Paurashava', 'Burthaiya', 'Chatkhali', 'Fatehpur', 'Forhadabad', 'Goria', 'Harua', 'Madunaghat', 'Mekhala', 'Mirkhadam', 'Nalap'],

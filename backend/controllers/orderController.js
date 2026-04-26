@@ -23,6 +23,16 @@ const buildShippingAddress = (paymentInfo = {}) => ({
   fullAddress: String(paymentInfo.fullAddress || paymentInfo.address || '').trim()
 });
 
+const calculateDeliveryCharge = ({ division, totalItems }) => {
+  const normalizedDivision = String(division || '').trim().toLowerCase();
+  const isDhaka = normalizedDivision === 'dhaka';
+  const baseCharge = isDhaka ? 70 : 120;
+
+  if (Number(totalItems || 0) >= 4) return 0;
+  if (Number(totalItems || 0) >= 3) return Math.max(0, Number((baseCharge * 0.3).toFixed(2)));
+  return baseCharge;
+};
+
 const productWasPurchasedByOrders = (orders = [], productId) => orders.some((order) =>
   PAID_STATUSES.includes(order.status)
   && Array.isArray(order.products)
@@ -86,7 +96,11 @@ exports.placeOrder = async (req, res) => {
       };
     }));
 
-    const deliveryCharge = subtotal > 1500 ? 0 : 80;
+    const totalItems = orderProducts.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    const deliveryCharge = calculateDeliveryCharge({
+      division: shippingAddress.division,
+      totalItems
+    });
     let discountTotal = 0;
     let appliedCoupon = null;
 

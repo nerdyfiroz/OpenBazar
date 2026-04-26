@@ -94,9 +94,9 @@ exports.createProduct = async (req, res) => {
     if (videoData && bodyVideoUrl) {
       return res.status(400).json({ message: 'Please provide only one video for the product' });
     }
-    const finalVideo = videoData || (bodyVideoUrl ? { url: bodyVideoUrl, originalName: '', mimeType: '', size: 0 } : null);
+    const finalVideo = videoData || (bodyVideoUrl ? { url: bodyVideoUrl, originalName: '', mimeType: '', size: 0 } : undefined);
 
-    const product = new Product({
+    const productPayload = {
       name,
       description,
       saleType: ['sale', 'preorder'].includes(saleType) ? saleType : 'regular',
@@ -114,11 +114,16 @@ exports.createProduct = async (req, res) => {
       saleStartAt: saleStartAt || null,
       saleEndAt: saleEndAt || null,
       photos: finalPhotos,
-      video: finalVideo,
       images: finalPhotos,
       seller: req.user._id,
       isApproved: false // Admin approval required
-    });
+    };
+
+    if (finalVideo) {
+      productPayload.video = finalVideo;
+    }
+
+    const product = new Product(productPayload);
     await product.save();
     res.json({ message: 'Product submitted for approval', product });
   } catch (err) {

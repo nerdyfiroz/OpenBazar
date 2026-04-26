@@ -15,7 +15,13 @@ export default function Cart() {
     clearCoupon
   } = useStore();
 
-  const deliveryCharge = subtotal > 1500 ? 0 : 80;
+  const [deliveryArea, setDeliveryArea] = useState('dhaka');
+
+  const totalItems = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const baseDeliveryCharge = deliveryArea === 'dhaka' ? 70 : 120;
+  const deliveryDiscountRate = totalItems >= 4 ? 1 : totalItems >= 3 ? 0.7 : 0;
+  const deliveryCharge = Number((baseDeliveryCharge * (1 - deliveryDiscountRate)).toFixed(2));
+
   const total = subtotal - couponDiscount + deliveryCharge;
 
   return (
@@ -51,9 +57,25 @@ export default function Cart() {
 
         <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-4 md:p-6">
           <h2 className="text-lg font-bold">Order Summary</h2>
+          <div className="mt-3 rounded-lg border border-slate-200 p-3 text-sm">
+            <p className="mb-2 font-semibold">Delivery Area</p>
+            <select className="input" value={deliveryArea} onChange={(e) => setDeliveryArea(e.target.value)}>
+              <option value="dhaka">Dhaka (৳70)</option>
+              <option value="outside">Outside Dhaka (৳120)</option>
+            </select>
+            <p className="mt-2 text-xs text-slate-600">
+              {totalItems >= 4
+                ? '4+ items: 100% delivery discount applied.'
+                : totalItems >= 3
+                  ? '3 items: 70% delivery discount applied.'
+                  : 'Buy at least 3 items to get delivery discount.'}
+            </p>
+          </div>
           <div className="mt-3 space-y-2 text-sm">
             <p className="flex justify-between"><span>Subtotal</span><span>৳{subtotal.toFixed(2)}</span></p>
-            <p className="flex justify-between"><span>Delivery</span><span>{deliveryCharge === 0 ? 'Free' : `৳${deliveryCharge}`}</span></p>
+            <p className="flex justify-between"><span>Base Delivery</span><span>৳{baseDeliveryCharge.toFixed(2)}</span></p>
+            <p className="flex justify-between text-green-600"><span>Delivery Discount</span><span>-৳{(baseDeliveryCharge - deliveryCharge).toFixed(2)}</span></p>
+            <p className="flex justify-between"><span>Delivery</span><span>{deliveryCharge === 0 ? 'Free' : `৳${deliveryCharge.toFixed(2)}`}</span></p>
             <p className="flex justify-between text-green-600"><span>Coupon Discount</span><span>-৳{couponDiscount.toFixed(2)}</span></p>
             <p className="flex justify-between border-t pt-2 font-bold"><span>Total</span><span>৳{Math.max(0, total).toFixed(2)}</span></p>
           </div>

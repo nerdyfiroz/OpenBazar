@@ -14,6 +14,13 @@ export default function AdminDashboard() {
   const [verificationFee, setVerificationFee] = useState(0);
   const [flashSale, setFlashSale] = useState(null);
   const [coupons, setCoupons] = useState([]);
+  const [adminForm, setAdminForm] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    password: ''
+  });
+  const [creatingAdmin, setCreatingAdmin] = useState(false);
   const [editingCouponId, setEditingCouponId] = useState(null);
   const [couponForm, setCouponForm] = useState({
     code: '',
@@ -75,56 +82,63 @@ export default function AdminDashboard() {
     setMessage('');
 
     try {
+      const fetchJson = async (url, options = {}) => {
+        try {
+          const res = await fetch(url, options);
+          if (!res.ok) return { ok: false, data: null };
+          const data = await res.json();
+          return { ok: true, data };
+        } catch {
+          return { ok: false, data: null };
+        }
+      };
+
       const [dashRes, productRes, orderRes, userRes, sellerAppRes, badgeReqRes, feeRes, flashSaleRes, couponRes] = await Promise.all([
-        fetch(`${API_BASE}/dashboard/admin`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/products/admin/all`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/orders/admin/all`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/auth/users`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/auth/admin/seller-applications`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/auth/admin/seller-verification-requests`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/auth/admin/seller-verification-fee`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }),
-        fetch(`${API_BASE}/dashboard/flash-sale`),
-        fetch(`${API_BASE}/coupons/admin/all`, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
+        fetchJson(`${API_BASE}/dashboard/admin`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetchJson(`${API_BASE}/products/admin/all`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetchJson(`${API_BASE}/orders/admin/all`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetchJson(`${API_BASE}/auth/users`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetchJson(`${API_BASE}/auth/admin/seller-applications`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetchJson(`${API_BASE}/auth/admin/seller-verification-requests`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetchJson(`${API_BASE}/auth/admin/seller-verification-fee`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetchJson(`${API_BASE}/dashboard/flash-sale`),
+        fetchJson(`${API_BASE}/coupons/admin/all`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
-      if (!dashRes.ok || !productRes.ok || !orderRes.ok || !userRes.ok || !sellerAppRes.ok || !badgeReqRes.ok || !feeRes.ok || !flashSaleRes.ok || !couponRes.ok) {
-        throw new Error('Failed to load admin data. Ensure you are logged in as admin.');
-      }
+      const failedSections = [];
 
-      const dashData = await dashRes.json();
-      const productData = await productRes.json();
-      const orderData = await orderRes.json();
-      const userData = await userRes.json();
-      const sellerAppData = await sellerAppRes.json();
-      const badgeReqData = await badgeReqRes.json();
-      const feeData = await feeRes.json();
-      const flashSaleData = await flashSaleRes.json();
-      const couponData = await couponRes.json();
-      setDashboard(dashData);
-      setProducts(normalizeList(productData, 'products'));
-      setOrders(normalizeList(orderData, 'orders'));
-      setUsers(normalizeList(userData, 'users'));
-      setSellerApplications(normalizeList(sellerAppData, 'users'));
-      setBadgeRequests(normalizeList(badgeReqData, 'users'));
-      setVerificationFee(Number(feeData.fee || 0));
-      setFlashSale(flashSaleData);
-      setCoupons(Array.isArray(couponData) ? couponData : []);
+      if (!dashRes.ok) failedSections.push('dashboard overview');
+      if (!productRes.ok) failedSections.push('products');
+      if (!orderRes.ok) failedSections.push('orders');
+      if (!userRes.ok) failedSections.push('users');
+      if (!sellerAppRes.ok) failedSections.push('seller applications');
+      if (!badgeReqRes.ok) failedSections.push('badge requests');
+      if (!feeRes.ok) failedSections.push('verification fee');
+      if (!flashSaleRes.ok) failedSections.push('flash sale');
+      if (!couponRes.ok) failedSections.push('coupons');
+
+      setDashboard(dashRes.data || {
+        totalOrders: 0,
+        totalSellers: 0,
+        totalProducts: 0,
+        totalSales: 0,
+        totalProductsSold: 0,
+        totalVisitors: 0,
+        totalCommission: 0,
+        topSellingProducts: []
+      });
+      setProducts(normalizeList(productRes.data, 'products'));
+      setOrders(normalizeList(orderRes.data, 'orders'));
+      setUsers(normalizeList(userRes.data, 'users'));
+      setSellerApplications(normalizeList(sellerAppRes.data, 'users'));
+      setBadgeRequests(normalizeList(badgeReqRes.data, 'users'));
+      setVerificationFee(Number(feeRes.data?.fee || 0));
+      setFlashSale(flashSaleRes.data || { status: 'inactive', count: 0, nextEndsAt: null });
+      setCoupons(Array.isArray(couponRes.data) ? couponRes.data : []);
+
+      if (failedSections.length) {
+        setMessage(`Some sections failed to load: ${failedSections.join(', ')}.`);
+      }
     } catch (err) {
       setMessage(err.message || 'Failed to load data');
     } finally {
@@ -286,6 +300,47 @@ export default function AdminDashboard() {
 
   const onCouponFormChange = (field, value) => {
     setCouponForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const onAdminFormChange = (field, value) => {
+    setAdminForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const createAdmin = async () => {
+    if (!token) return;
+
+    setCreatingAdmin(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/admin/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: adminForm.name,
+          email: adminForm.email,
+          phone: adminForm.phone,
+          password: adminForm.password
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        const validationMessage = Array.isArray(data.errors) && data.errors.length
+          ? data.errors[0].msg
+          : null;
+        throw new Error(validationMessage || data.message || 'Failed to create admin');
+      }
+
+      setMessage(data.message || 'New admin created successfully');
+      setAdminForm({ name: '', email: '', phone: '', password: '' });
+      fetchData();
+    } catch (err) {
+      setMessage(err.message || 'Failed to create admin');
+    } finally {
+      setCreatingAdmin(false);
+    }
   };
 
   const submitCoupon = async () => {
@@ -846,6 +901,43 @@ export default function AdminDashboard() {
 
           <section className="rounded-lg border border-gray-200 bg-white p-4 overflow-x-auto">
             <h2 className="text-lg font-semibold mb-3">Manage Users</h2>
+            <div className="mb-4 grid gap-3 rounded-lg border border-slate-200 bg-slate-50 p-3 md:grid-cols-2 lg:grid-cols-4">
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                placeholder="Admin Name"
+                value={adminForm.name}
+                onChange={(e) => onAdminFormChange('name', e.target.value)}
+              />
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                placeholder="Admin Email"
+                type="email"
+                value={adminForm.email}
+                onChange={(e) => onAdminFormChange('email', e.target.value)}
+              />
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                placeholder="Admin Phone"
+                value={adminForm.phone}
+                onChange={(e) => onAdminFormChange('phone', e.target.value)}
+              />
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                placeholder="Password (min 6 chars)"
+                type="password"
+                value={adminForm.password}
+                onChange={(e) => onAdminFormChange('password', e.target.value)}
+              />
+              <div className="md:col-span-2 lg:col-span-4">
+                <button
+                  className="rounded bg-black px-4 py-2 text-sm text-white disabled:opacity-70"
+                  onClick={createAdmin}
+                  disabled={creatingAdmin}
+                >
+                  {creatingAdmin ? 'Creating Admin...' : 'Create New Admin'}
+                </button>
+              </div>
+            </div>
             <table className="min-w-full text-sm">
               <thead>
                 <tr className="text-left border-b">

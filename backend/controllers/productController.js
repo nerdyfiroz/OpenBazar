@@ -346,8 +346,18 @@ exports.adminUpdateProduct = async (req, res) => {
     if (nextSalePercent !== null && nextSalePercent !== undefined && Number(nextSalePercent) > 100) {
       return res.status(400).json({ message: 'Sale percentage cannot exceed 100' });
     }
-    if (nextDiscount !== null && nextDiscount !== undefined && Number(nextDiscount) > Number(nextPrice)) {
-      return res.status(400).json({ message: 'Discount price cannot be greater than base price' });
+
+    // Auto-calculate discount price if salePercent is set but discountPrice is not
+    if (nextSalePercent > 0 && (updates.salePercent !== undefined)) {
+      const autoCalculatedDiscount = Math.max(0, Number((Number(nextPrice) * (1 - Number(nextSalePercent) / 100)).toFixed(2)));
+      updates.discountPrice = autoCalculatedDiscount;
+    }
+
+    const finalDiscount = updates.discountPrice ?? nextDiscount;
+    const finalPrice = Number(nextPrice);
+
+    if (finalDiscount !== null && finalDiscount !== undefined && Number(finalDiscount) > finalPrice) {
+      return res.status(400).json({ message: `Discount price (${finalDiscount}) cannot be greater than base price (${finalPrice})` });
     }
 
     const product = await Product.findByIdAndUpdate(

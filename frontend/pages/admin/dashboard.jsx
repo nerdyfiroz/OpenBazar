@@ -490,7 +490,7 @@ export default function AdminDashboard() {
                   <th className="py-2 pr-3">Sale Type</th>
                   <th className="py-2 pr-3">Base Price</th>
                   <th className="py-2 pr-3">Sale %</th>
-                  <th className="py-2 pr-3">Discount Price</th>
+                  <th className="py-2 pr-3">Sale Price</th>
                   <th className="py-2 pr-3">Sale Start</th>
                   <th className="py-2 pr-3">Sale End</th>
                   <th className="py-2 pr-3">Approved</th>
@@ -532,11 +532,13 @@ export default function AdminDashboard() {
                         value={p.salePercent ?? 0}
                         onChange={(e) => {
                           const newSalePercent = e.target.value === '' ? 0 : Number(e.target.value);
+                          const basePrice = Number(p.price) || 0;
                           onProductFieldChange(p._id, 'salePercent', newSalePercent);
-                          // Auto-calculate discount price when sale percent changes
-                          if (newSalePercent > 0) {
-                            const computedDiscount = Math.max(0, Number((p.price * (1 - newSalePercent / 100)).toFixed(2)));
-                            onProductFieldChange(p._id, 'discountPrice', computedDiscount);
+                          // Auto-calculate discount price: Sale Price = Base Price * (1 - Discount%)
+                          if (newSalePercent > 0 && basePrice > 0) {
+                            const calculatedDiscount = Number((basePrice * (1 - newSalePercent / 100)).toFixed(2));
+                            console.log(`Auto-calc: ${basePrice} * (1 - ${newSalePercent}/100) = ${calculatedDiscount}`);
+                            onProductFieldChange(p._id, 'discountPrice', calculatedDiscount);
                           } else {
                             onProductFieldChange(p._id, 'discountPrice', null);
                           }
@@ -549,7 +551,8 @@ export default function AdminDashboard() {
                         type="number"
                         min="0"
                         value={p.discountPrice ?? ''}
-                        placeholder="auto-calc"
+                        placeholder="auto"
+                        title="Sale price after discount (auto-calculated from Sale %)"
                         onChange={(e) => onProductFieldChange(
                           p._id,
                           'discountPrice',

@@ -592,10 +592,10 @@ export default function AdminDashboard() {
                         <button
                           className="rounded bg-black px-3 py-1 text-white"
                           onClick={() => updateProduct(p._id, {
-                            price: p.price,
+                            price: Number(p.price) || 0,
                             saleType: p.saleType,
-                            salePercent: p.salePercent,
-                            discountPrice: p.discountPrice,
+                            salePercent: Number(p.salePercent) || 0,
+                            discountPrice: p.discountPrice !== null && p.discountPrice !== undefined ? Number(p.discountPrice) : null,
                             saleStartAt: p.saleStartAt || null,
                             saleEndAt: p.saleEndAt || null,
                             isApproved: p.isApproved,

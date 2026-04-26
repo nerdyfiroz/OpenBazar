@@ -332,9 +332,17 @@ exports.adminUpdateProduct = async (req, res) => {
     const existingProduct = await Product.findById(req.params.id);
     if (!existingProduct) return res.status(404).json({ message: 'Not found' });
 
+    // Convert numeric fields to numbers for proper validation
+    if (updates.price !== undefined) updates.price = Number(updates.price);
+    if (updates.salePercent !== undefined) updates.salePercent = Number(updates.salePercent);
+    if (updates.discountPrice !== undefined && updates.discountPrice !== null) {
+      updates.discountPrice = Number(updates.discountPrice);
+    }
+
     const nextPrice = updates.price ?? existingProduct.price;
     const nextDiscount = updates.discountPrice ?? existingProduct.discountPrice;
     const nextSalePercent = updates.salePercent ?? existingProduct.salePercent;
+    
     if (nextSalePercent !== null && nextSalePercent !== undefined && Number(nextSalePercent) > 100) {
       return res.status(400).json({ message: 'Sale percentage cannot exceed 100' });
     }

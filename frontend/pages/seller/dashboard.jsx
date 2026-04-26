@@ -9,7 +9,8 @@ const blankForm = {
   name: '', description: '', category: '', brand: '', price: '',
   saleType: 'regular', salePercent: '', discountPrice: '',
   preorderStartAt: '', preorderEndAt: '', saleStartAt: '', saleEndAt: '',
-  colors: '', sizes: '', accessories: '', specifications: ''
+  colors: '', sizes: '', accessories: '', specifications: '',
+  stock: '100' // Default 100 units; set to 9999 for unlimited
 };
 
 // ─── Status badge colours ────────────────────────────────────────────────────
@@ -139,7 +140,8 @@ export default function SellerDashboard() {
       saleStartAt: p.saleStartAt ? p.saleStartAt.slice(0, 16) : '',
       saleEndAt: p.saleEndAt ? p.saleEndAt.slice(0, 16) : '',
       colors: (p.colors || []).join(', '), sizes: (p.sizes || []).join(', '),
-      accessories: (p.accessories || []).join(', '), specifications: p.specifications || ''
+      accessories: (p.accessories || []).join(', '), specifications: p.specifications || '',
+      stock: String(p.stock ?? 100)
     });
     setEditingId(p._id);
     setPhotos([]); setVideo(null);
@@ -330,6 +332,7 @@ export default function SellerDashboard() {
               <Field label="Colors (comma separated)" value={form.colors} onChange={(v) => setF('colors', v)} placeholder="Red, Blue" className="md:col-span-2" />
               <Field label="Sizes (comma separated)" value={form.sizes} onChange={(v) => setF('sizes', v)} placeholder="S, M, L, XL" className="md:col-span-2" />
               <Field label="Accessories (comma separated)" value={form.accessories} onChange={(v) => setF('accessories', v)} placeholder="Case, Charger" className="md:col-span-2" />
+              <Field label="Stock / Quantity Available" type="number" min="0" value={form.stock} onChange={(v) => setF('stock', v)} placeholder="Enter 9999 for unlimited" />
 
               <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-700">Photos (up to 3)</label>

@@ -45,6 +45,11 @@ export default function Checkout() {
     }));
   }, [effectiveUser]);
 
+  // Redirect to cart if it's empty
+  useEffect(() => {
+    if (!cart.length) router.push('/cart');
+  }, [cart.length]);
+
   const baseDeliveryCharge = useMemo(() => (
     String(form.division || '').trim().toLowerCase() === 'dhaka' ? 70 : 120
   ), [form.division]);

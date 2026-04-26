@@ -72,6 +72,26 @@ export default function UserOrders() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [expanded, setExpanded] = useState(null);
+  const [cancelling, setCancelling] = useState(null);
+
+  const cancelOrder = async (orderId) => {
+    if (!confirm('Are you sure you want to cancel this order?')) return;
+    setCancelling(orderId);
+    try {
+      const res = await fetch(`${API_BASE}/orders/my/${orderId}/cancel`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setOrders((prev) => prev.map((o) => o._id === orderId ? { ...o, status: 'cancelled' } : o));
+      setMessage('✅ Order cancelled successfully.');
+    } catch (err) {
+      setMessage(err.message || 'Failed to cancel order');
+    } finally {
+      setCancelling(null);
+    }
+  };
 
   useEffect(() => {
     if (!token) {
@@ -255,6 +275,14 @@ export default function UserOrders() {
                           className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
                           🔍 Track Order
                         </Link>
+                        {['pending', 'confirmed'].includes(order.status) && (
+                          <button
+                            onClick={() => cancelOrder(order._id)}
+                            disabled={cancelling === order._id}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-red-300 px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50">
+                            {cancelling === order._id ? '⏳ Cancelling...' : '❌ Cancel Order'}
+                          </button>
+                        )}
                       </div>
                     </div>
                   )}

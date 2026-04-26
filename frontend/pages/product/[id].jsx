@@ -50,6 +50,13 @@ export default function ProductDetails() {
       .then((data) => {
         setProduct(data);
         setReviews(Array.isArray(data.reviews) ? data.reviews : []);
+        // Track recently viewed
+        try {
+          const prev = JSON.parse(localStorage.getItem('ob_recently_viewed') || '[]');
+          const filtered = prev.filter((p) => p._id !== data._id);
+          const entry = { _id: data._id, name: data.name, images: data.images, photos: data.photos, price: data.price, discountPrice: data.discountPrice };
+          localStorage.setItem('ob_recently_viewed', JSON.stringify([entry, ...filtered].slice(0, 10)));
+        } catch { /* ignore */ }
         if (data?.category) {
           fetch(`${API_BASE}/products?category=${encodeURIComponent(data.category)}&limit=5`)
             .then((r) => r.json())
@@ -236,6 +243,15 @@ export default function ProductDetails() {
               <button onClick={() => toggleWishlist(product)}
                 className={`rounded-xl border px-6 py-3 text-sm font-semibold transition ${inWishlist ? 'border-red-300 bg-red-50 text-red-600' : 'border-slate-200 hover:bg-slate-100'}`}>
                 {inWishlist ? '❤️ Wishlisted' : '🤍 Wishlist'}
+              </button>
+              <button
+                onClick={() => {
+                  const url = typeof window !== 'undefined' ? window.location.href : '';
+                  if (navigator.share) { navigator.share({ title: product.name, url }); }
+                  else { navigator.clipboard?.writeText(url); setAddedMsg('🔗 Link copied!'); setTimeout(() => setAddedMsg(''), 2000); }
+                }}
+                className="rounded-xl border border-slate-200 px-4 py-3 text-sm hover:bg-slate-100" title="Share">
+                📤
               </button>
             </div>
 

@@ -8,7 +8,8 @@ const router = express.Router();
 // User
 router.post('/', optionalAuthenticate, ctrl.placeOrder);
 router.get('/my', authenticate, authorize(['user']), ctrl.getMyOrders);
-router.get('/track/:id', optionalAuthenticate, ctrl.getOrderById); // Buyer order tracking
+router.get('/track/:id', optionalAuthenticate, ctrl.getOrderById);
+router.put('/my/:id/cancel', authenticate, authorize(['user']), ctrl.cancelOrder); // Buyer cancel
 
 // Seller
 router.get('/seller', authenticate, authorize(['seller']), ctrl.getSellerOrders);

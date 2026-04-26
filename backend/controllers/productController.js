@@ -130,6 +130,7 @@ exports.createProduct = async (req, res) => {
       photos: finalPhotos,
       images: finalPhotos,
       seller: req.user._id,
+      stock: req.body.stock !== undefined && req.body.stock !== '' ? Number(req.body.stock) : 9999,
       isApproved: false // Admin approval required
     };
 
@@ -163,12 +164,14 @@ exports.getAllProducts = async (req, res) => {
       minPrice,
       maxPrice,
       rating,
+      seller,
       sort = 'newest',
       page = 1,
       limit = 20
     } = req.query;
 
     const filter = { isApproved: true, isActive: true };
+    if (seller) filter.seller = seller; // Public seller profile filter
 
     if (q) {
       filter.$or = [

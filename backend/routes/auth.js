@@ -794,4 +794,20 @@ router.put('/change-password', authenticate, [
   }
 });
 
+// Public seller profile (no auth required)
+router.get('/seller/:id', async (req, res) => {
+  try {
+    const seller = await User.findById(req.params.id).select('name isSellerVerifiedBadge createdAt role');
+    if (!seller || seller.role !== 'seller') return res.status(404).json({ message: 'Seller not found' });
+    res.json({
+      _id: seller._id,
+      name: seller.name,
+      isSellerVerifiedBadge: Boolean(seller.isSellerVerifiedBadge),
+      createdAt: seller.createdAt
+    });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

@@ -6,10 +6,14 @@ const CouponSchema = new mongoose.Schema({
   value: { type: Number, required: true, min: 0 },
   minOrderAmount: { type: Number, default: 0, min: 0 },
   maxDiscount: { type: Number, default: null, min: 0 },
-  startsAt: { type: Date, required: true },
-  expiresAt: { type: Date, required: true },
+  // Optional: if not provided, defaults to immediately active / no expiry
+  startsAt: { type: Date, default: () => new Date() },
+  expiresAt: { type: Date, default: () => new Date('2099-12-31T23:59:59Z') },
   usageLimit: { type: Number, default: null, min: 1 },
   usedCount: { type: Number, default: 0, min: 0 },
+  // Minimum number of distinct product line-items in the cart to use this coupon
+  // 0 = no restriction, 4 = coupon only applies if cart has more than 4 items
+  minItemCount: { type: Number, default: 0, min: 0 },
   isActive: { type: Boolean, default: true },
   createdAt: { type: Date, default: Date.now }
 });

@@ -29,6 +29,7 @@ export default function AdminDashboard() {
     minOrderAmount: 0,
     maxDiscount: '',
     usageLimit: '',
+    minItemCount: '',
     startsAt: '',
     expiresAt: '',
     isActive: true
@@ -65,6 +66,7 @@ export default function AdminDashboard() {
       minOrderAmount: 0,
       maxDiscount: '',
       usageLimit: '',
+      minItemCount: '',
       startsAt: '',
       expiresAt: '',
       isActive: true
@@ -353,8 +355,9 @@ export default function AdminDashboard() {
       minOrderAmount: Number(couponForm.minOrderAmount || 0),
       maxDiscount: couponForm.maxDiscount === '' ? null : Number(couponForm.maxDiscount),
       usageLimit: couponForm.usageLimit === '' ? null : Number(couponForm.usageLimit),
-      startsAt: couponForm.startsAt,
-      expiresAt: couponForm.expiresAt,
+      minItemCount: couponForm.minItemCount === '' ? 0 : Number(couponForm.minItemCount),
+      startsAt: couponForm.startsAt || undefined,
+      expiresAt: couponForm.expiresAt || undefined,
       isActive: Boolean(couponForm.isActive)
     };
 
@@ -393,6 +396,7 @@ export default function AdminDashboard() {
       minOrderAmount: coupon.minOrderAmount ?? 0,
       maxDiscount: coupon.maxDiscount ?? '',
       usageLimit: coupon.usageLimit ?? '',
+      minItemCount: coupon.minItemCount ?? '',
       startsAt: toDateTimeLocal(coupon.startsAt),
       expiresAt: toDateTimeLocal(coupon.expiresAt),
       isActive: Boolean(coupon.isActive)
@@ -690,6 +694,15 @@ export default function AdminDashboard() {
                 placeholder="Usage limit (optional)"
                 value={couponForm.usageLimit}
                 onChange={(e) => onCouponFormChange('usageLimit', e.target.value)}
+              />
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                type="number"
+                min="0"
+                placeholder="Min items in cart (e.g. 4 = needs &gt;4 items)"
+                value={couponForm.minItemCount}
+                onChange={(e) => onCouponFormChange('minItemCount', e.target.value)}
+                title="Coupon only applies when cart has MORE than this many items. 0 = no restriction."
               />
               <input
                 className="rounded border border-slate-200 px-3 py-2 text-sm"

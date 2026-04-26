@@ -107,7 +107,7 @@ exports.placeOrder = async (req, res) => {
     const couponCode = String(paymentInfo?.couponCode || '').trim().toUpperCase();
     if (couponCode) {
       const couponDoc = await Coupon.findOne({ code: couponCode });
-      const couponValidation = validateCouponDoc(couponDoc, subtotal);
+      const couponValidation = validateCouponDoc(couponDoc, subtotal, totalItems);
       if (!couponValidation.ok) {
         return res.status(400).json({ message: couponValidation.message || 'Invalid coupon' });
       }

@@ -15,8 +15,13 @@ function normalizeCouponPayload(body = {}) {
     usageLimit: body.usageLimit === '' || body.usageLimit === null || body.usageLimit === undefined
       ? null
       : Number(body.usageLimit),
-    startsAt: body.startsAt,
-    expiresAt: body.expiresAt,
+    // minItemCount: 0 = no restriction; e.g. 4 means coupon requires more than 4 items
+    minItemCount: body.minItemCount === '' || body.minItemCount === null || body.minItemCount === undefined
+      ? 0
+      : Number(body.minItemCount),
+    // Dates are optional — if omitted the model applies defaults (now / 2099)
+    startsAt: body.startsAt || undefined,
+    expiresAt: body.expiresAt || undefined,
     isActive: body.isActive === undefined ? true : Boolean(body.isActive)
   };
 
@@ -38,7 +43,7 @@ function calculateDiscount(coupon, subtotal) {
   return Math.max(0, Math.min(discount, subtotal));
 }
 
-function validateCouponDoc(coupon, subtotal) {
+function validateCouponDoc(coupon, subtotal, totalItems = 0) {
   const now = new Date();
 
   if (!coupon || !coupon.isActive) return { ok: false, message: 'Coupon is not active' };
@@ -47,6 +52,13 @@ function validateCouponDoc(coupon, subtotal) {
   if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) return { ok: false, message: 'Coupon usage limit reached' };
   if (subtotal < (coupon.minOrderAmount || 0)) {
     return { ok: false, message: `Minimum order amount is ৳${coupon.minOrderAmount}` };
+  }
+  // Enforce minimum purchase item count (e.g. minItemCount=4 → requires more than 4 items)
+  if (coupon.minItemCount > 0 && Number(totalItems) <= coupon.minItemCount) {
+    return {
+      ok: false,
+      message: `This coupon requires more than ${coupon.minItemCount} item${coupon.minItemCount === 1 ? '' : 's'} in your cart`
+    };
   }
 
   const discount = calculateDiscount(coupon, subtotal);
@@ -59,7 +71,8 @@ function validateCouponDoc(coupon, subtotal) {
       type: coupon.type,
       value: coupon.value,
       maxDiscount: coupon.maxDiscount,
-      minOrderAmount: coupon.minOrderAmount
+      minOrderAmount: coupon.minOrderAmount,
+      minItemCount: coupon.minItemCount || 0
     }
   };
 }
@@ -68,10 +81,12 @@ exports.validateCoupon = async (req, res) => {
   try {
     const code = String(req.body.code || '').trim().toUpperCase();
     const subtotal = Number(req.body.subtotal || 0);
+    // totalItems: total number of items (quantities) in the cart
+    const totalItems = Number(req.body.totalItems || 0);
 
     if (!code) return res.status(400).json({ ok: false, message: 'Coupon code is required' });
     const coupon = await Coupon.findOne({ code });
-    const result = validateCouponDoc(coupon, subtotal);
+    const result = validateCouponDoc(coupon, subtotal, totalItems);
 
     if (!result.ok) return res.status(400).json(result);
     return res.json(result);
@@ -156,9 +171,10 @@ exports.updateCoupon = async (req, res) => {
     coupon.value = payload.value;
     coupon.minOrderAmount = payload.minOrderAmount;
     coupon.maxDiscount = payload.maxDiscount;
-    coupon.startsAt = payload.startsAt;
-    coupon.expiresAt = payload.expiresAt;
+    if (payload.startsAt) coupon.startsAt = payload.startsAt;
+    if (payload.expiresAt) coupon.expiresAt = payload.expiresAt;
     coupon.usageLimit = payload.usageLimit;
+    coupon.minItemCount = payload.minItemCount ?? 0;
     coupon.isActive = payload.isActive;
 
     await coupon.save();

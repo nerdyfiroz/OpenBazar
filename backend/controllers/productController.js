@@ -21,10 +21,22 @@ const getUploadedMedia = (req) => {
   const uploadedPhotos = (req.files?.photos || []).slice(0, 3);
   const uploadedVideo = (req.files?.video || [])[0] || null;
 
-  const photoUrls = uploadedPhotos.map((file) => `/uploads/products/${file.filename}`);
+  // Cloudinary storage: file.path = secure_url, file.filename = public_id
+  // Disk storage: file.path = absolute disk path → convert to relative URL
+  const toUrl = (file) => {
+    if (!file) return null;
+    // Cloudinary files have a secure_url-like path (starts with https://)
+    if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
+      return file.path;
+    }
+    // Disk storage — serve via /uploads/...
+    return `/uploads/products/${file.filename}`;
+  };
+
+  const photoUrls = uploadedPhotos.map(toUrl).filter(Boolean);
   const videoData = uploadedVideo
     ? {
-        url: `/uploads/products/${uploadedVideo.filename}`,
+        url: toUrl(uploadedVideo),
         originalName: uploadedVideo.originalname,
         mimeType: uploadedVideo.mimetype,
         size: uploadedVideo.size

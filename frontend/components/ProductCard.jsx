@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { useStore } from './StoreProvider';
 import { resolveImageSrc, FALLBACK_IMAGE } from '../utils/resolveImageSrc';
@@ -12,12 +11,12 @@ export default function ProductCard({ product }) {
   return (
     <article className="group rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
       <div className="relative overflow-hidden rounded-xl bg-slate-100 h-44 w-full">
-        <Image
+        {/* Plain <img> — avoids next/image domain restrictions for uploaded files */}
+        <img
           src={imageSrc}
           alt={product.name}
-          fill
-          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-          className="object-cover transition duration-300 group-hover:scale-105"
+          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
+          onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
         />
         {hasDiscount && (
           <span className="absolute left-2 top-2 z-10 rounded-full bg-orange-500 px-2 py-1 text-xs font-bold text-white">

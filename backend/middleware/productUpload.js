@@ -1,37 +1,70 @@
+const cloudinary = require('cloudinary').v2;
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 
-const uploadRoot = path.join(__dirname, '..', 'uploads', 'products');
-fs.mkdirSync(uploadRoot, { recursive: true });
+// Cloudinary is configured from env vars:
+//   CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadRoot),
-  filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    const ext = path.extname(file.originalname);
-    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'openbazar/products',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+    transformation: [{ width: 1200, crop: 'limit', quality: 'auto' }]
   }
 });
 
-const fileFilter = (req, file, cb) => {
-  const isPhoto = file.fieldname === 'photos' && file.mimetype.startsWith('image/');
-  const isVideo = file.fieldname === 'video' && file.mimetype.startsWith('video/');
-
-  if (isPhoto || isVideo) return cb(null, true);
-  cb(new Error('Only image files are allowed in photos and a single video file is allowed in video'));
-};
-
-const uploadProductMedia = multer({
-  storage,
-  fileFilter,
-  limits: {
-    fileSize: 10 * 1024 * 1024,
-    files: 4
+const videoStorage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'openbazar/products/videos',
+    resource_type: 'video',
+    allowed_formats: ['mp4', 'mov', 'avi', 'webm']
   }
-}).fields([
+});
+
+// Fallback to disk storage if Cloudinary is not configured (local dev)
+const isDiskMode =
+  !process.env.CLOUDINARY_CLOUD_NAME ||
+  !process.env.CLOUDINARY_API_KEY ||
+  !process.env.CLOUDINARY_API_SECRET;
+
+let upload;
+
+if (isDiskMode) {
+  const path = require('path');
+  const fs = require('fs');
+  const multerDisk = require('multer');
+
+  const uploadRoot = path.join(__dirname, '..', 'uploads', 'products');
+  fs.mkdirSync(uploadRoot, { recursive: true });
+
+  const diskStorage = multerDisk.diskStorage({
+    destination: (req, file, cb) => cb(null, uploadRoot),
+    filename: (req, file, cb) => {
+      const ext = path.extname(file.originalname);
+      cb(null, `${file.fieldname}-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+    }
+  });
+
+  upload = multerDisk({
+    storage: diskStorage,
+    limits: { fileSize: 10 * 1024 * 1024, files: 4 }
+  });
+  console.log('[Upload] Using local disk storage (Cloudinary not configured)');
+} else {
+  upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024, files: 4 } });
+  console.log('[Upload] Using Cloudinary storage');
+}
+
+const uploadProductMedia = upload.fields([
   { name: 'photos', maxCount: 3 },
   { name: 'video', maxCount: 1 }
 ]);
 
-module.exports = { uploadProductMedia };
+module.exports = { uploadProductMedia, cloudinary };

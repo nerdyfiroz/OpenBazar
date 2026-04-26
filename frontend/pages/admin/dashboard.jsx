@@ -13,6 +13,19 @@ export default function AdminDashboard() {
   const [badgeRequests, setBadgeRequests] = useState([]);
   const [verificationFee, setVerificationFee] = useState(0);
   const [flashSale, setFlashSale] = useState(null);
+  const [coupons, setCoupons] = useState([]);
+  const [editingCouponId, setEditingCouponId] = useState(null);
+  const [couponForm, setCouponForm] = useState({
+    code: '',
+    type: 'percentage',
+    value: '',
+    minOrderAmount: 0,
+    maxDiscount: '',
+    usageLimit: '',
+    startsAt: '',
+    expiresAt: '',
+    isActive: true
+  });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [statusNote, setStatusNote] = useState('');
@@ -36,6 +49,21 @@ export default function AdminDashboard() {
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   };
 
+  const resetCouponForm = () => {
+    setEditingCouponId(null);
+    setCouponForm({
+      code: '',
+      type: 'percentage',
+      value: '',
+      minOrderAmount: 0,
+      maxDiscount: '',
+      usageLimit: '',
+      startsAt: '',
+      expiresAt: '',
+      isActive: true
+    });
+  };
+
   const fetchData = async () => {
     if (!token) {
       setLoading(false);
@@ -47,7 +75,7 @@ export default function AdminDashboard() {
     setMessage('');
 
     try {
-      const [dashRes, productRes, orderRes, userRes, sellerAppRes, badgeReqRes, feeRes, flashSaleRes] = await Promise.all([
+      const [dashRes, productRes, orderRes, userRes, sellerAppRes, badgeReqRes, feeRes, flashSaleRes, couponRes] = await Promise.all([
         fetch(`${API_BASE}/dashboard/admin`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
@@ -69,10 +97,13 @@ export default function AdminDashboard() {
         fetch(`${API_BASE}/auth/admin/seller-verification-fee`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        fetch(`${API_BASE}/dashboard/flash-sale`)
+        fetch(`${API_BASE}/dashboard/flash-sale`),
+        fetch(`${API_BASE}/coupons/admin/all`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
       ]);
 
-      if (!dashRes.ok || !productRes.ok || !orderRes.ok || !userRes.ok || !sellerAppRes.ok || !badgeReqRes.ok || !feeRes.ok || !flashSaleRes.ok) {
+      if (!dashRes.ok || !productRes.ok || !orderRes.ok || !userRes.ok || !sellerAppRes.ok || !badgeReqRes.ok || !feeRes.ok || !flashSaleRes.ok || !couponRes.ok) {
         throw new Error('Failed to load admin data. Ensure you are logged in as admin.');
       }
 
@@ -84,6 +115,7 @@ export default function AdminDashboard() {
       const badgeReqData = await badgeReqRes.json();
       const feeData = await feeRes.json();
       const flashSaleData = await flashSaleRes.json();
+      const couponData = await couponRes.json();
       setDashboard(dashData);
       setProducts(normalizeList(productData, 'products'));
       setOrders(normalizeList(orderData, 'orders'));
@@ -92,6 +124,7 @@ export default function AdminDashboard() {
       setBadgeRequests(normalizeList(badgeReqData, 'users'));
       setVerificationFee(Number(feeData.fee || 0));
       setFlashSale(flashSaleData);
+      setCoupons(Array.isArray(couponData) ? couponData : []);
     } catch (err) {
       setMessage(err.message || 'Failed to load data');
     } finally {
@@ -248,6 +281,107 @@ export default function AdminDashboard() {
       setMessage('User status updated');
     } catch (err) {
       setMessage(err.message || 'User update failed');
+    }
+  };
+
+  const onCouponFormChange = (field, value) => {
+    setCouponForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const submitCoupon = async () => {
+    if (!token) return;
+
+    const payload = {
+      code: couponForm.code,
+      type: couponForm.type,
+      value: Number(couponForm.value || 0),
+      minOrderAmount: Number(couponForm.minOrderAmount || 0),
+      maxDiscount: couponForm.maxDiscount === '' ? null : Number(couponForm.maxDiscount),
+      usageLimit: couponForm.usageLimit === '' ? null : Number(couponForm.usageLimit),
+      startsAt: couponForm.startsAt,
+      expiresAt: couponForm.expiresAt,
+      isActive: Boolean(couponForm.isActive)
+    };
+
+    try {
+      const endpoint = editingCouponId
+        ? `${API_BASE}/coupons/admin/${editingCouponId}`
+        : `${API_BASE}/coupons/admin`;
+      const method = editingCouponId ? 'PUT' : 'POST';
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to save coupon');
+
+      setMessage(editingCouponId ? 'Coupon updated successfully' : 'Coupon created successfully');
+      resetCouponForm();
+      fetchData();
+    } catch (err) {
+      setMessage(err.message || 'Failed to save coupon');
+    }
+  };
+
+  const startEditCoupon = (coupon) => {
+    setEditingCouponId(coupon._id);
+    setCouponForm({
+      code: coupon.code || '',
+      type: coupon.type || 'percentage',
+      value: coupon.value ?? '',
+      minOrderAmount: coupon.minOrderAmount ?? 0,
+      maxDiscount: coupon.maxDiscount ?? '',
+      usageLimit: coupon.usageLimit ?? '',
+      startsAt: toDateTimeLocal(coupon.startsAt),
+      expiresAt: toDateTimeLocal(coupon.expiresAt),
+      isActive: Boolean(coupon.isActive)
+    });
+  };
+
+  const toggleCouponStatus = async (couponId, isActive) => {
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/coupons/admin/${couponId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ isActive })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update coupon status');
+
+      setCoupons((prev) => prev.map((c) => (c._id === couponId ? data.coupon : c)));
+      setMessage('Coupon status updated');
+    } catch (err) {
+      setMessage(err.message || 'Failed to update coupon status');
+    }
+  };
+
+  const deleteCoupon = async (couponId) => {
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/coupons/admin/${couponId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to delete coupon');
+
+      setCoupons((prev) => prev.filter((c) => c._id !== couponId));
+      setMessage('Coupon deleted');
+      if (editingCouponId === couponId) resetCouponForm();
+    } catch (err) {
+      setMessage(err.message || 'Failed to delete coupon');
     }
   };
 
@@ -423,6 +557,141 @@ export default function AdminDashboard() {
               <button className="rounded bg-black px-4 py-2 text-sm text-white" onClick={updateVerificationFee}>
                 Update Fee
               </button>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-gray-200 bg-white p-4 space-y-4">
+            <h2 className="text-lg font-semibold">Coupon Manager</h2>
+
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                placeholder="Code (e.g. EID150)"
+                value={couponForm.code}
+                onChange={(e) => onCouponFormChange('code', e.target.value.toUpperCase())}
+              />
+              <select
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                value={couponForm.type}
+                onChange={(e) => onCouponFormChange('type', e.target.value)}
+              >
+                <option value="percentage">Percentage</option>
+                <option value="fixed">Fixed</option>
+              </select>
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Value"
+                value={couponForm.value}
+                onChange={(e) => onCouponFormChange('value', e.target.value)}
+              />
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Min order amount"
+                value={couponForm.minOrderAmount}
+                onChange={(e) => onCouponFormChange('minOrderAmount', e.target.value)}
+              />
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Max discount (optional)"
+                value={couponForm.maxDiscount}
+                onChange={(e) => onCouponFormChange('maxDiscount', e.target.value)}
+              />
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                type="number"
+                min="1"
+                placeholder="Usage limit (optional)"
+                value={couponForm.usageLimit}
+                onChange={(e) => onCouponFormChange('usageLimit', e.target.value)}
+              />
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                type="datetime-local"
+                value={couponForm.startsAt}
+                onChange={(e) => onCouponFormChange('startsAt', e.target.value)}
+              />
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                type="datetime-local"
+                value={couponForm.expiresAt}
+                onChange={(e) => onCouponFormChange('expiresAt', e.target.value)}
+              />
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={Boolean(couponForm.isActive)}
+                  onChange={(e) => onCouponFormChange('isActive', e.target.checked)}
+                />
+                Active
+              </label>
+              <button className="rounded bg-black px-4 py-2 text-sm text-white" onClick={submitCoupon}>
+                {editingCouponId ? 'Update Coupon' : 'Create Coupon'}
+              </button>
+              {editingCouponId && (
+                <button className="rounded border px-4 py-2 text-sm" onClick={resetCouponForm}>
+                  Cancel Edit
+                </button>
+              )}
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left">
+                    <th className="py-2 pr-3">Code</th>
+                    <th className="py-2 pr-3">Type</th>
+                    <th className="py-2 pr-3">Value</th>
+                    <th className="py-2 pr-3">Min Order</th>
+                    <th className="py-2 pr-3">Used</th>
+                    <th className="py-2 pr-3">Start</th>
+                    <th className="py-2 pr-3">Expires</th>
+                    <th className="py-2 pr-3">Status</th>
+                    <th className="py-2 pr-3">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {coupons.map((coupon) => (
+                    <tr key={coupon._id} className="border-b">
+                      <td className="py-2 pr-3 font-semibold">{coupon.code}</td>
+                      <td className="py-2 pr-3 capitalize">{coupon.type}</td>
+                      <td className="py-2 pr-3">{coupon.type === 'percentage' ? `${coupon.value}%` : `৳${Number(coupon.value || 0).toFixed(2)}`}</td>
+                      <td className="py-2 pr-3">৳{Number(coupon.minOrderAmount || 0).toFixed(2)}</td>
+                      <td className="py-2 pr-3">{coupon.usedCount}{coupon.usageLimit ? ` / ${coupon.usageLimit}` : ''}</td>
+                      <td className="py-2 pr-3">{coupon.startsAt ? new Date(coupon.startsAt).toLocaleString() : '-'}</td>
+                      <td className="py-2 pr-3">{coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleString() : '-'}</td>
+                      <td className="py-2 pr-3">{coupon.isActive ? 'Active' : 'Inactive'}</td>
+                      <td className="py-2 pr-3">
+                        <div className="flex flex-wrap gap-2">
+                          <button className="rounded border px-2 py-1 text-xs" onClick={() => startEditCoupon(coupon)}>Edit</button>
+                          <button className="rounded border px-2 py-1 text-xs" onClick={() => toggleCouponStatus(coupon._id, !coupon.isActive)}>
+                            {coupon.isActive ? 'Deactivate' : 'Activate'}
+                          </button>
+                          <button className="rounded border border-red-300 px-2 py-1 text-xs text-red-600" onClick={() => deleteCoupon(coupon._id)}>
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {!coupons.length && (
+                    <tr>
+                      <td className="py-3 text-slate-500" colSpan={9}>No coupons created yet.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </section>
 

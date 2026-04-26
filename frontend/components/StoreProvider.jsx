@@ -3,11 +3,6 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 const StoreContext = createContext(null);
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
-const COUPONS = {
-  MEGA10: { discountPercent: 10, title: 'Mega Style 10% Off' },
-  EID150: { flat: 150, title: 'Eid Campaign ৳150 Off' }
-};
-
 export function StoreProvider({ children }) {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState('');
@@ -158,20 +153,51 @@ export function StoreProvider({ children }) {
     });
   };
 
-  const applyCoupon = (code) => {
+  const applyCoupon = async (code) => {
     const normalized = code.toUpperCase().trim();
-    const next = COUPONS[normalized];
-    if (!next) return { ok: false, message: 'Invalid coupon code' };
-    setCoupon({ code: normalized, ...next });
-    return { ok: true, message: `${normalized} applied` };
+    if (!normalized) return { ok: false, message: 'Coupon code is required' };
+
+    try {
+      const res = await fetch(`${API_BASE}/coupons/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: normalized, subtotal })
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data?.ok) {
+        return { ok: false, message: data?.message || 'Invalid coupon code' };
+      }
+
+      const nextCoupon = {
+        code: data.coupon.code,
+        type: data.coupon.type,
+        value: data.coupon.value,
+        maxDiscount: data.coupon.maxDiscount,
+        minOrderAmount: data.coupon.minOrderAmount
+      };
+
+      setCoupon(nextCoupon);
+      return { ok: true, message: `${nextCoupon.code} applied` };
+    } catch {
+      return { ok: false, message: 'Failed to validate coupon. Try again.' };
+    }
   };
 
   const subtotal = useMemo(() => cart.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0), [cart]);
 
   const couponDiscount = useMemo(() => {
     if (!coupon) return 0;
-    if (coupon.discountPercent) return (subtotal * coupon.discountPercent) / 100;
-    if (coupon.flat) return Math.min(coupon.flat, subtotal);
+
+    if (coupon.type === 'percentage') {
+      const raw = (subtotal * Number(coupon.value || 0)) / 100;
+      if (coupon.maxDiscount !== null && coupon.maxDiscount !== undefined) {
+        return Math.min(raw, Number(coupon.maxDiscount || 0), subtotal);
+      }
+      return Math.min(raw, subtotal);
+    }
+
+    if (coupon.type === 'fixed') return Math.min(Number(coupon.value || 0), subtotal);
     return 0;
   }, [coupon, subtotal]);
 

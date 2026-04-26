@@ -89,9 +89,9 @@ function CouponForm({ applyCoupon }) {
 
   return (
     <form
-      onSubmit={(e) => {
+      onSubmit={async (e) => {
         e.preventDefault();
-        const res = applyCoupon(code);
+        const res = await applyCoupon(code);
         setMsg(res.message);
       }}
       className="space-y-2"

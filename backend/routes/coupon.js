@@ -8,6 +8,8 @@ router.post('/validate', ctrl.validateCoupon);
 
 router.get('/admin/all', authenticate, authorize(['admin']), ctrl.listCoupons);
 router.post('/admin', authenticate, authorize(['admin']), ctrl.createCoupon);
+router.put('/admin/:id', authenticate, authorize(['admin']), ctrl.updateCoupon);
 router.put('/admin/:id/status', authenticate, authorize(['admin']), ctrl.toggleCoupon);
+router.delete('/admin/:id', authenticate, authorize(['admin']), ctrl.deleteCoupon);
 
 module.exports = router;

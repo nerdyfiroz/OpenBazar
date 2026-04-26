@@ -1,5 +1,28 @@
 const Coupon = require('../models/Coupon');
 
+function normalizeCouponPayload(body = {}) {
+  const payload = {
+    ...body,
+    code: String(body.code || '').trim().toUpperCase(),
+    type: body.type,
+    value: Number(body.value),
+    minOrderAmount: body.minOrderAmount === '' || body.minOrderAmount === null || body.minOrderAmount === undefined
+      ? 0
+      : Number(body.minOrderAmount),
+    maxDiscount: body.maxDiscount === '' || body.maxDiscount === null || body.maxDiscount === undefined
+      ? null
+      : Number(body.maxDiscount),
+    usageLimit: body.usageLimit === '' || body.usageLimit === null || body.usageLimit === undefined
+      ? null
+      : Number(body.usageLimit),
+    startsAt: body.startsAt,
+    expiresAt: body.expiresAt,
+    isActive: body.isActive === undefined ? true : Boolean(body.isActive)
+  };
+
+  return payload;
+}
+
 function calculateDiscount(coupon, subtotal) {
   let discount = 0;
 
@@ -59,10 +82,19 @@ exports.validateCoupon = async (req, res) => {
 
 exports.createCoupon = async (req, res) => {
   try {
-    const payload = {
-      ...req.body,
-      code: String(req.body.code || '').trim().toUpperCase()
-    };
+    const payload = normalizeCouponPayload(req.body);
+
+    if (!payload.code) {
+      return res.status(400).json({ message: 'Coupon code is required' });
+    }
+
+    if (!['percentage', 'fixed'].includes(payload.type)) {
+      return res.status(400).json({ message: 'Coupon type must be percentage or fixed' });
+    }
+
+    if (payload.expiresAt && payload.startsAt && new Date(payload.expiresAt) <= new Date(payload.startsAt)) {
+      return res.status(400).json({ message: 'Expiry date must be after start date' });
+    }
 
     const exists = await Coupon.findOne({ code: payload.code });
     if (exists) return res.status(400).json({ message: 'Coupon code already exists' });
@@ -92,6 +124,57 @@ exports.toggleCoupon = async (req, res) => {
     await coupon.save();
 
     res.json({ message: 'Coupon status updated', coupon });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateCoupon = async (req, res) => {
+  try {
+    const coupon = await Coupon.findById(req.params.id);
+    if (!coupon) return res.status(404).json({ message: 'Coupon not found' });
+
+    const payload = normalizeCouponPayload({ ...coupon.toObject(), ...req.body });
+
+    if (!payload.code) {
+      return res.status(400).json({ message: 'Coupon code is required' });
+    }
+
+    if (!['percentage', 'fixed'].includes(payload.type)) {
+      return res.status(400).json({ message: 'Coupon type must be percentage or fixed' });
+    }
+
+    if (payload.expiresAt && payload.startsAt && new Date(payload.expiresAt) <= new Date(payload.startsAt)) {
+      return res.status(400).json({ message: 'Expiry date must be after start date' });
+    }
+
+    const duplicate = await Coupon.findOne({ code: payload.code, _id: { $ne: coupon._id } });
+    if (duplicate) return res.status(400).json({ message: 'Coupon code already exists' });
+
+    coupon.code = payload.code;
+    coupon.type = payload.type;
+    coupon.value = payload.value;
+    coupon.minOrderAmount = payload.minOrderAmount;
+    coupon.maxDiscount = payload.maxDiscount;
+    coupon.startsAt = payload.startsAt;
+    coupon.expiresAt = payload.expiresAt;
+    coupon.usageLimit = payload.usageLimit;
+    coupon.isActive = payload.isActive;
+
+    await coupon.save();
+
+    res.json({ message: 'Coupon updated', coupon });
+  } catch (err) {
+    res.status(400).json({ message: err.message || 'Invalid coupon data' });
+  }
+};
+
+exports.deleteCoupon = async (req, res) => {
+  try {
+    const coupon = await Coupon.findByIdAndDelete(req.params.id);
+    if (!coupon) return res.status(404).json({ message: 'Coupon not found' });
+
+    res.json({ message: 'Coupon deleted' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

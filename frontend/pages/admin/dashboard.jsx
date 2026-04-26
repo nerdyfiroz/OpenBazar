@@ -530,11 +530,17 @@ export default function AdminDashboard() {
                         min="0"
                         max="100"
                         value={p.salePercent ?? 0}
-                        onChange={(e) => onProductFieldChange(
-                          p._id,
-                          'salePercent',
-                          e.target.value === '' ? 0 : Number(e.target.value)
-                        )}
+                        onChange={(e) => {
+                          const newSalePercent = e.target.value === '' ? 0 : Number(e.target.value);
+                          onProductFieldChange(p._id, 'salePercent', newSalePercent);
+                          // Auto-calculate discount price when sale percent changes
+                          if (newSalePercent > 0) {
+                            const computedDiscount = Math.max(0, Number((p.price * (1 - newSalePercent / 100)).toFixed(2)));
+                            onProductFieldChange(p._id, 'discountPrice', computedDiscount);
+                          } else {
+                            onProductFieldChange(p._id, 'discountPrice', null);
+                          }
+                        }}
                       />
                     </td>
                     <td className="py-2 pr-3">
@@ -543,7 +549,7 @@ export default function AdminDashboard() {
                         type="number"
                         min="0"
                         value={p.discountPrice ?? ''}
-                        placeholder="none"
+                        placeholder="auto-calc"
                         onChange={(e) => onProductFieldChange(
                           p._id,
                           'discountPrice',

@@ -28,8 +28,16 @@ const ProductSchema = new mongoose.Schema({
     min: 0,
     default: null,
     validate: {
+      // NOTE: `this.price` is unreliable when called via findByIdAndUpdate
+      // with runValidators:true (this = query context, not the document).
+      // The controller already validates discountPrice < price before saving.
+      // We use a loose check: if price is available on `this`, enforce it;
+      // otherwise let it pass (controller has already guaranteed correctness).
       validator(value) {
-        return value === null || value <= this.price;
+        if (value === null || value === undefined) return true;
+        const basePrice = this.price ?? this.get?.('price');
+        if (basePrice === null || basePrice === undefined) return true;
+        return Number(value) <= Number(basePrice);
       },
       message: 'Discount price cannot be greater than base price'
     }

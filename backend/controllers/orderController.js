@@ -164,7 +164,20 @@ exports.placeOrder = async (req, res) => {
     await order.save();
 
     if (appliedCoupon?.code) {
+      // Increment total usage count
       await Coupon.findOneAndUpdate({ code: appliedCoupon.code }, { $inc: { usedCount: 1 } });
+
+      // Increment distinct-user count if this buyer hasn't used the coupon before
+      if (buyer?._id) {
+        const prevOrdersWithCoupon = await Order.countDocuments({
+          user: buyer._id,
+          'appliedCoupon.code': appliedCoupon.code,
+          _id: { $ne: order._id }
+        });
+        if (prevOrdersWithCoupon === 0) {
+          await Coupon.findOneAndUpdate({ code: appliedCoupon.code }, { $inc: { usersUsedCount: 1 } });
+        }
+      }
     }
 
     await Promise.all(orderProducts.map((item) => Product.findByIdAndUpdate(

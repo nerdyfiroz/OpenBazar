@@ -1,36 +1,37 @@
+const jwt = require('jsonwebtoken');
 const Coupon = require('../models/Coupon');
+const Order = require('../models/Order');
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function nullableInt(val, fallback = null) {
+  if (val === '' || val === null || val === undefined) return fallback;
+  const n = Number(val);
+  return Number.isFinite(n) ? n : fallback;
+}
 
 function normalizeCouponPayload(body = {}) {
-  const payload = {
+  return {
     ...body,
     code: String(body.code || '').trim().toUpperCase(),
     type: body.type,
     value: Number(body.value),
-    minOrderAmount: body.minOrderAmount === '' || body.minOrderAmount === null || body.minOrderAmount === undefined
-      ? 0
-      : Number(body.minOrderAmount),
-    maxDiscount: body.maxDiscount === '' || body.maxDiscount === null || body.maxDiscount === undefined
-      ? null
-      : Number(body.maxDiscount),
-    usageLimit: body.usageLimit === '' || body.usageLimit === null || body.usageLimit === undefined
-      ? null
-      : Number(body.usageLimit),
-    // minItemCount: 0 = no restriction; e.g. 4 means coupon requires more than 4 items
-    minItemCount: body.minItemCount === '' || body.minItemCount === null || body.minItemCount === undefined
-      ? 0
-      : Number(body.minItemCount),
-    // Dates are optional — if omitted the model applies defaults (now / 2099)
+    minOrderAmount: nullableInt(body.minOrderAmount, 0),
+    maxDiscount: nullableInt(body.maxDiscount, null),
+    usageLimit: nullableInt(body.usageLimit, null),
+    minItemCount: nullableInt(body.minItemCount, 0),
+    // Per-user and max-users limits
+    perUserLimit: nullableInt(body.perUserLimit, null),
+    maxUsers: nullableInt(body.maxUsers, null),
+    // Dates are optional — model defaults apply if omitted
     startsAt: body.startsAt || undefined,
     expiresAt: body.expiresAt || undefined,
     isActive: body.isActive === undefined ? true : Boolean(body.isActive)
   };
-
-  return payload;
 }
 
 function calculateDiscount(coupon, subtotal) {
   let discount = 0;
-
   if (coupon.type === 'percentage') {
     discount = (subtotal * coupon.value) / 100;
     if (coupon.maxDiscount !== null && coupon.maxDiscount !== undefined) {
@@ -39,21 +40,28 @@ function calculateDiscount(coupon, subtotal) {
   } else {
     discount = coupon.value;
   }
-
   return Math.max(0, Math.min(discount, subtotal));
 }
 
+/**
+ * Synchronous basic validation (no DB queries).
+ * User-specific checks are done separately in validateCoupon endpoint.
+ */
 function validateCouponDoc(coupon, subtotal, totalItems = 0) {
   const now = new Date();
 
   if (!coupon || !coupon.isActive) return { ok: false, message: 'Coupon is not active' };
-  if (now < coupon.startsAt) return { ok: false, message: 'Coupon is not started yet' };
+  if (now < coupon.startsAt) return { ok: false, message: 'Coupon has not started yet' };
   if (now > coupon.expiresAt) return { ok: false, message: 'Coupon has expired' };
-  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) return { ok: false, message: 'Coupon usage limit reached' };
+  if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) {
+    return { ok: false, message: 'Coupon total usage limit reached' };
+  }
+  if (coupon.maxUsers && coupon.usersUsedCount >= coupon.maxUsers) {
+    return { ok: false, message: 'This coupon has reached its maximum user limit' };
+  }
   if (subtotal < (coupon.minOrderAmount || 0)) {
     return { ok: false, message: `Minimum order amount is ৳${coupon.minOrderAmount}` };
   }
-  // Enforce minimum purchase item count (e.g. minItemCount=4 → requires at least 4 items)
   if (coupon.minItemCount > 0 && Number(totalItems) < coupon.minItemCount) {
     return {
       ok: false,
@@ -72,23 +80,56 @@ function validateCouponDoc(coupon, subtotal, totalItems = 0) {
       value: coupon.value,
       maxDiscount: coupon.maxDiscount,
       minOrderAmount: coupon.minOrderAmount,
-      minItemCount: coupon.minItemCount || 0
+      minItemCount: coupon.minItemCount || 0,
+      perUserLimit: coupon.perUserLimit || null,
+      maxUsers: coupon.maxUsers || null
     }
   };
 }
+
+// ─── Extract optional userId from Authorization header ───────────────────────
+function extractUserId(req) {
+  try {
+    const authHeader = req.headers.authorization || '';
+    if (!authHeader.startsWith('Bearer ')) return null;
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return decoded.id || decoded._id || null;
+  } catch {
+    return null;
+  }
+}
+
+// ─── Endpoints ───────────────────────────────────────────────────────────────
 
 exports.validateCoupon = async (req, res) => {
   try {
     const code = String(req.body.code || '').trim().toUpperCase();
     const subtotal = Number(req.body.subtotal || 0);
-    // totalItems: total number of items (quantities) in the cart
     const totalItems = Number(req.body.totalItems || 0);
 
     if (!code) return res.status(400).json({ ok: false, message: 'Coupon code is required' });
+
     const coupon = await Coupon.findOne({ code });
     const result = validateCouponDoc(coupon, subtotal, totalItems);
-
     if (!result.ok) return res.status(400).json(result);
+
+    // Per-user limit check (only for authenticated users)
+    const userId = req.user?._id || extractUserId(req);
+    if (userId && coupon.perUserLimit) {
+      const userUsed = await Order.countDocuments({
+        user: userId,
+        'appliedCoupon.code': code,
+        status: { $nin: ['cancelled'] }
+      });
+      if (userUsed >= coupon.perUserLimit) {
+        return res.status(400).json({
+          ok: false,
+          message: `You can only use this coupon ${coupon.perUserLimit} time${coupon.perUserLimit === 1 ? '' : 's'}`
+        });
+      }
+    }
+
     return res.json(result);
   } catch (err) {
     return res.status(500).json({ ok: false, message: 'Server error' });
@@ -99,14 +140,10 @@ exports.createCoupon = async (req, res) => {
   try {
     const payload = normalizeCouponPayload(req.body);
 
-    if (!payload.code) {
-      return res.status(400).json({ message: 'Coupon code is required' });
-    }
-
+    if (!payload.code) return res.status(400).json({ message: 'Coupon code is required' });
     if (!['percentage', 'fixed'].includes(payload.type)) {
       return res.status(400).json({ message: 'Coupon type must be percentage or fixed' });
     }
-
     if (payload.expiresAt && payload.startsAt && new Date(payload.expiresAt) <= new Date(payload.startsAt)) {
       return res.status(400).json({ message: 'Expiry date must be after start date' });
     }
@@ -134,10 +171,8 @@ exports.toggleCoupon = async (req, res) => {
   try {
     const coupon = await Coupon.findById(req.params.id);
     if (!coupon) return res.status(404).json({ message: 'Coupon not found' });
-
     coupon.isActive = Boolean(req.body.isActive);
     await coupon.save();
-
     res.json({ message: 'Coupon status updated', coupon });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -151,14 +186,10 @@ exports.updateCoupon = async (req, res) => {
 
     const payload = normalizeCouponPayload({ ...coupon.toObject(), ...req.body });
 
-    if (!payload.code) {
-      return res.status(400).json({ message: 'Coupon code is required' });
-    }
-
+    if (!payload.code) return res.status(400).json({ message: 'Coupon code is required' });
     if (!['percentage', 'fixed'].includes(payload.type)) {
       return res.status(400).json({ message: 'Coupon type must be percentage or fixed' });
     }
-
     if (payload.expiresAt && payload.startsAt && new Date(payload.expiresAt) <= new Date(payload.startsAt)) {
       return res.status(400).json({ message: 'Expiry date must be after start date' });
     }
@@ -175,10 +206,11 @@ exports.updateCoupon = async (req, res) => {
     if (payload.expiresAt) coupon.expiresAt = payload.expiresAt;
     coupon.usageLimit = payload.usageLimit;
     coupon.minItemCount = payload.minItemCount ?? 0;
+    coupon.perUserLimit = payload.perUserLimit;
+    coupon.maxUsers = payload.maxUsers;
     coupon.isActive = payload.isActive;
 
     await coupon.save();
-
     res.json({ message: 'Coupon updated', coupon });
   } catch (err) {
     res.status(400).json({ message: err.message || 'Invalid coupon data' });
@@ -189,7 +221,6 @@ exports.deleteCoupon = async (req, res) => {
   try {
     const coupon = await Coupon.findByIdAndDelete(req.params.id);
     if (!coupon) return res.status(404).json({ message: 'Coupon not found' });
-
     res.json({ message: 'Coupon deleted' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });

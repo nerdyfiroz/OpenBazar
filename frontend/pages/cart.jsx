@@ -80,7 +80,7 @@ export default function Cart() {
             <p className="flex justify-between border-t pt-2 font-bold"><span>Total</span><span>৳{Math.max(0, total).toFixed(2)}</span></p>
           </div>
 
-          <CouponBox applyCoupon={applyCoupon} coupon={coupon} clearCoupon={clearCoupon} />
+          <CouponBox applyCoupon={applyCoupon} coupon={coupon} clearCoupon={clearCoupon} totalItems={totalItems} />
 
           <Link href="/checkout" className="mt-4 block rounded-xl bg-orange-500 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-orange-600">Proceed to Checkout</Link>
         </aside>
@@ -89,7 +89,7 @@ export default function Cart() {
   );
 }
 
-function CouponBox({ applyCoupon, coupon, clearCoupon }) {
+function CouponBox({ applyCoupon, coupon, clearCoupon, totalItems }) {
   return (
     <div className="mt-4 rounded-xl border border-slate-200 p-3 text-sm">
       <p className="mb-2 font-semibold">Apply Coupon</p>
@@ -99,13 +99,13 @@ function CouponBox({ applyCoupon, coupon, clearCoupon }) {
           <button type="button" className="text-rose-500" onClick={clearCoupon}>Remove</button>
         </div>
       ) : (
-        <CouponForm applyCoupon={applyCoupon} />
+        <CouponForm applyCoupon={applyCoupon} totalItems={totalItems} />
       )}
     </div>
   );
 }
 
-function CouponForm({ applyCoupon }) {
+function CouponForm({ applyCoupon, totalItems }) {
   const [code, setCode] = useState('');
   const [msg, setMsg] = useState('');
 
@@ -113,7 +113,7 @@ function CouponForm({ applyCoupon }) {
     <form
       onSubmit={async (e) => {
         e.preventDefault();
-        const res = await applyCoupon(code);
+        const res = await applyCoupon(code, totalItems);
         setMsg(res.message);
       }}
       className="space-y-2"

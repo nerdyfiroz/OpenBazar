@@ -30,6 +30,8 @@ export default function AdminDashboard() {
     maxDiscount: '',
     usageLimit: '',
     minItemCount: '',
+    perUserLimit: '',
+    maxUsers: '',
     startsAt: '',
     expiresAt: '',
     isActive: true
@@ -67,6 +69,8 @@ export default function AdminDashboard() {
       maxDiscount: '',
       usageLimit: '',
       minItemCount: '',
+      perUserLimit: '',
+      maxUsers: '',
       startsAt: '',
       expiresAt: '',
       isActive: true
@@ -356,6 +360,8 @@ export default function AdminDashboard() {
       maxDiscount: couponForm.maxDiscount === '' ? null : Number(couponForm.maxDiscount),
       usageLimit: couponForm.usageLimit === '' ? null : Number(couponForm.usageLimit),
       minItemCount: couponForm.minItemCount === '' ? 0 : Number(couponForm.minItemCount),
+      perUserLimit: couponForm.perUserLimit === '' ? null : Number(couponForm.perUserLimit),
+      maxUsers: couponForm.maxUsers === '' ? null : Number(couponForm.maxUsers),
       startsAt: couponForm.startsAt || undefined,
       expiresAt: couponForm.expiresAt || undefined,
       isActive: Boolean(couponForm.isActive)
@@ -397,6 +403,8 @@ export default function AdminDashboard() {
       maxDiscount: coupon.maxDiscount ?? '',
       usageLimit: coupon.usageLimit ?? '',
       minItemCount: coupon.minItemCount ?? '',
+      perUserLimit: coupon.perUserLimit ?? '',
+      maxUsers: coupon.maxUsers ?? '',
       startsAt: toDateTimeLocal(coupon.startsAt),
       expiresAt: toDateTimeLocal(coupon.expiresAt),
       isActive: Boolean(coupon.isActive)
@@ -691,9 +699,10 @@ export default function AdminDashboard() {
                 className="rounded border border-slate-200 px-3 py-2 text-sm"
                 type="number"
                 min="1"
-                placeholder="Usage limit (optional)"
+                placeholder="Total usage limit — all users (optional)"
                 value={couponForm.usageLimit}
                 onChange={(e) => onCouponFormChange('usageLimit', e.target.value)}
+                title="Max total times this coupon can be redeemed across all users."
               />
               <input
                 className="rounded border border-slate-200 px-3 py-2 text-sm"
@@ -703,6 +712,24 @@ export default function AdminDashboard() {
                 value={couponForm.minItemCount}
                 onChange={(e) => onCouponFormChange('minItemCount', e.target.value)}
                 title="Coupon only applies when cart has AT LEAST this many items. 0 = no restriction."
+              />
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                type="number"
+                min="1"
+                placeholder="Max uses per user (optional)"
+                value={couponForm.perUserLimit}
+                onChange={(e) => onCouponFormChange('perUserLimit', e.target.value)}
+                title="Max number of times a single user can redeem this coupon."
+              />
+              <input
+                className="rounded border border-slate-200 px-3 py-2 text-sm"
+                type="number"
+                min="1"
+                placeholder="Max distinct users (optional)"
+                value={couponForm.maxUsers}
+                onChange={(e) => onCouponFormChange('maxUsers', e.target.value)}
+                title="Max number of distinct users who can ever use this coupon."
               />
               <input
                 className="rounded border border-slate-200 px-3 py-2 text-sm"

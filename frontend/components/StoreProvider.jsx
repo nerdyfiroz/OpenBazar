@@ -153,18 +153,18 @@ export function StoreProvider({ children }) {
     });
   };
 
-  const applyCoupon = async (code) => {
+  const applyCoupon = async (code, totalItems = 0) => {
     const normalized = code.toUpperCase().trim();
     if (!normalized) return { ok: false, message: 'Coupon code is required' };
 
-    // Total quantity across all cart items — needed for minItemCount validation
-    const totalItems = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+    // totalItems passed in from the caller so we always get the live cart quantity
+    const itemCount = totalItems || cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
     try {
       const res = await fetch(`${API_BASE}/coupons/validate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: normalized, subtotal, totalItems })
+        body: JSON.stringify({ code: normalized, subtotal, totalItems: itemCount })
       });
 
       const data = await res.json();

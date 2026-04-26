@@ -350,7 +350,10 @@ exports.adminUpdateProduct = async (req, res) => {
 
     res.json({ message: 'Product updated by admin', product });
   } catch (err) {
-    res.status(500).json({ message: 'Server error' });
+    if (err?.name === 'ValidationError' || err?.name === 'CastError') {
+      return res.status(400).json({ message: err.message || 'Invalid product data' });
+    }
+    return res.status(500).json({ message: err.message || 'Server error' });
   }
 };
 

@@ -528,6 +528,20 @@ export default function AdminDashboard() {
                         className="w-24 border rounded px-2 py-1"
                         type="number"
                         min="0"
+                        max="100"
+                        value={p.salePercent ?? 0}
+                        onChange={(e) => onProductFieldChange(
+                          p._id,
+                          'salePercent',
+                          e.target.value === '' ? 0 : Number(e.target.value)
+                        )}
+                      />
+                    </td>
+                    <td className="py-2 pr-3">
+                      <input
+                        className="w-24 border rounded px-2 py-1"
+                        type="number"
+                        min="0"
                         value={p.discountPrice ?? ''}
                         placeholder="none"
                         onChange={(e) => onProductFieldChange(

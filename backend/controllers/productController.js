@@ -1,6 +1,7 @@
 // Product Controller: CRUD, approval, seller-only management
 // Upgrade: Add image upload, product reviews, search/filter, etc.
 const Product = require('../models/Product');
+const { processUploads } = require('../middleware/productUpload');
 
 const SELLER_ALLOWED_CATEGORIES = ['Electronics', 'Fashion', 'Beauty', 'Home & Living', 'Sports'];
 
@@ -90,6 +91,7 @@ exports.createProduct = async (req, res) => {
       return res.status(400).json({ message: 'Discount price cannot be greater than base price' });
     }
 
+    await processUploads(req);
     const { photoUrls, videoData } = getUploadedMedia(req);
     const bodyPhotos = normalizeList(req.body.photos || images);
     const finalPhotos = [...photoUrls, ...bodyPhotos];
@@ -268,6 +270,7 @@ exports.updateProduct = async (req, res) => {
       return res.status(400).json({ message: 'Discount price cannot be greater than base price' });
     }
 
+    await processUploads(req);
     const { photoUrls, videoData } = getUploadedMedia(req);
     const bodyPhotos = normalizeList(req.body.photos || req.body.images);
     const mergedPhotos = [...photoUrls, ...bodyPhotos];

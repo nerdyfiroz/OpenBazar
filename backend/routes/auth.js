@@ -756,4 +756,42 @@ router.delete('/wishlist/:productId', authenticate, async (req, res) => {
   }
 });
 
+// Update name / phone (authenticated)
+router.put('/profile', authenticate, async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    if (name) user.name = String(name).trim();
+    if (phone !== undefined) user.phone = String(phone).trim();
+    await user.save();
+    res.json({ message: 'Profile updated', user: { id: user._id, name: user.name, phone: user.phone, email: user.email, role: user.role } });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Change password (authenticated, requires current password)
+router.put('/change-password', authenticate, [
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword').isLength({ min: 6 }).withMessage('New password must be at least 6 characters')
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ message: errors.array()[0].msg });
+
+  try {
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const match = await bcrypt.compare(req.body.currentPassword, user.password);
+    if (!match) return res.status(400).json({ message: 'Current password is incorrect' });
+
+    user.password = await bcrypt.hash(req.body.newPassword, 10);
+    await user.save();
+    res.json({ message: 'Password changed successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;

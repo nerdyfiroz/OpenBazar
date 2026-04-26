@@ -106,8 +106,10 @@ export default function Checkout() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Order failed');
 
-      setMessage('Order placed successfully! Redirecting...');
-      setTimeout(() => router.push(token ? '/user/orders' : '/'), 1200);
+      setMessage('Order placed successfully!');
+      const orderId = data.order?._id || data._id || '';
+      // Clear cart after successful order
+      setTimeout(() => router.push(`/order-success${orderId ? `?orderId=${orderId}` : ''}`), 400);
     } catch (error) {
       setMessage(error.message || 'Failed to place order');
     } finally {

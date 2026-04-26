@@ -81,15 +81,19 @@ exports.placeOrder = async (req, res) => {
       return res.status(400).json({ message: 'Transaction ID is required for mobile banking send money orders' });
     }
 
-    // Validate products and calculate subtotal
+    // Validate products, check stock, and calculate subtotal
     let subtotal = 0;
     const orderProducts = await Promise.all(products.map(async (item) => {
       const product = await Product.findById(item.product);
       if (!product || !product.isApproved) throw new Error('Invalid product');
+      if (product.stock < Number(item.quantity || 1)) {
+        throw new Error(`"${product.name}" only has ${product.stock} unit(s) left in stock`);
+      }
       const effectivePrice = product.discountPrice ?? product.price;
       subtotal += effectivePrice * item.quantity;
       return {
         product: product._id,
+        name: product.name,
         quantity: item.quantity,
         seller: product.seller,
         price: effectivePrice
@@ -180,9 +184,10 @@ exports.placeOrder = async (req, res) => {
       }
     }
 
+    // Decrement stock and increment soldCount for each product
     await Promise.all(orderProducts.map((item) => Product.findByIdAndUpdate(
       item.product,
-      { $inc: { soldCount: item.quantity } }
+      { $inc: { soldCount: item.quantity, stock: -item.quantity } }
     )));
 
     res.json({ message: 'Order placed', order });

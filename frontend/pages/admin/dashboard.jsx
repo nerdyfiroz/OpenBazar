@@ -633,6 +633,29 @@ export default function AdminDashboard() {
             </table>
           </section>
 
+          {/* ─── Orders Management ─── */}
+          <section className="rounded-lg border border-gray-200 bg-white p-4">
+            <h2 className="mb-3 text-lg font-semibold">Order Management ({orders.length})</h2>
+            {!orders.length ? (
+              <p className="text-sm text-gray-500">No orders yet.</p>
+            ) : (
+              <div className="space-y-2 max-h-[600px] overflow-y-auto">
+                {orders.map((order) => (
+                  <AdminOrderRow
+                    key={order._id}
+                    order={order}
+                    token={token}
+                    apiBase={API_BASE}
+                    onUpdate={(updated) =>
+                      setOrders((prev) => prev.map((o) => (o._id === updated._id ? { ...o, ...updated } : o)))
+                    }
+                    onMsg={setMessage}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+
           <section className="rounded-lg border border-gray-200 bg-white p-4">
             <h2 className="text-lg font-semibold mb-3">Verified Badge Subscription Fee</h2>
             <div className="flex flex-wrap items-center gap-3">
@@ -1040,6 +1063,122 @@ function StatCard({ label, value }) {
     <div className="rounded-lg border border-gray-200 bg-white p-4">
       <p className="text-xs text-gray-500 uppercase tracking-wide">{label}</p>
       <p className="mt-1 text-xl font-bold">{value ?? 0}</p>
+    </div>
+  );
+}
+
+const ALL_STATUSES = ['pending', 'paid', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
+const STATUS_COLORS = {
+  pending: 'bg-yellow-100 text-yellow-700', paid: 'bg-blue-100 text-blue-700',
+  confirmed: 'bg-indigo-100 text-indigo-700', processing: 'bg-purple-100 text-purple-700',
+  shipped: 'bg-cyan-100 text-cyan-700', delivered: 'bg-green-100 text-green-700',
+  cancelled: 'bg-red-100 text-red-700'
+};
+
+function AdminOrderRow({ order: o, token, apiBase, onUpdate, onMsg }) {
+  const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState(o.status || 'pending');
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [tracking, setTracking] = useState({ courierService: o.tracking?.courierService || '', trackingId: o.tracking?.trackingId || '', trackingUrl: o.tracking?.trackingUrl || '' });
+  const [savingTracking, setSavingTracking] = useState(false);
+
+  const updateStatus = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch(`${apiBase}/orders/admin/${o._id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status, note })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      onUpdate(data.order || { ...o, status });
+      onMsg(`✅ Order ${String(o._id).slice(-6).toUpperCase()} → ${status}`);
+      setNote('');
+    } catch (err) { onMsg(err.message); }
+    finally { setSaving(false); }
+  };
+
+  const saveTracking = async () => {
+    setSavingTracking(true);
+    try {
+      const res = await fetch(`${apiBase}/orders/admin/${o._id}/tracking`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(tracking)
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      onMsg('✅ Tracking info saved');
+    } catch (err) { onMsg(err.message); }
+    finally { setSavingTracking(false); }
+  };
+
+  return (
+    <div className="rounded-xl border border-gray-200 overflow-hidden text-sm">
+      <button onClick={() => setOpen(!open)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left hover:bg-gray-50">
+        <div>
+          <span className="font-mono text-xs text-gray-400">#{String(o._id).slice(-8).toUpperCase()}</span>
+          <span className="ml-2 font-semibold">{o.guestCustomer?.name || 'User'}</span>
+          <span className="ml-2 text-xs text-gray-400">{new Date(o.createdAt).toLocaleDateString()}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-orange-600">৳{Number(o.total || 0).toFixed(0)}</span>
+          <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_COLORS[o.status] || 'bg-gray-100'}`}>{o.status}</span>
+          <span className="text-gray-400">{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+
+      {open && (
+        <div className="border-t border-gray-100 px-4 pb-4 pt-3 space-y-4">
+          {/* Items */}
+          <ul className="space-y-1 text-xs bg-gray-50 rounded-lg p-3">
+            {(o.products || []).map((item, i) => (
+              <li key={i} className="flex justify-between">
+                <span>{item.name || `Product #${i + 1}`} × {item.quantity || 1}</span>
+                <span>৳{(Number(item.price || 0) * Number(item.quantity || 1)).toFixed(0)}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-gray-500">📍 {o.shippingAddress?.fullAddress || 'No address'} · 💳 {o.paymentMethod}</p>
+
+          {/* Status update */}
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-3">
+            <p className="mb-2 text-xs font-bold text-indigo-700">Update Status</p>
+            <div className="flex flex-wrap gap-2">
+              <select className="rounded border border-indigo-200 bg-white px-2 py-1.5 text-sm"
+                value={status} onChange={(e) => setStatus(e.target.value)}>
+                {ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <input className="flex-1 rounded border border-indigo-200 bg-white px-2 py-1.5 text-sm"
+                placeholder="Note (optional)" value={note} onChange={(e) => setNote(e.target.value)} />
+              <button onClick={updateStatus} disabled={saving || status === o.status}
+                className="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-50">
+                {saving ? '...' : 'Update'}
+              </button>
+            </div>
+          </div>
+
+          {/* Tracking */}
+          <div className="rounded-xl border border-orange-200 bg-orange-50 p-3">
+            <p className="mb-2 text-xs font-bold text-orange-700">Courier Tracking</p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <input className="rounded border bg-white px-2 py-1.5 text-xs" placeholder="Service (e.g. Pathao)"
+                value={tracking.courierService} onChange={(e) => setTracking((t) => ({ ...t, courierService: e.target.value }))} />
+              <input className="rounded border bg-white px-2 py-1.5 text-xs font-mono" placeholder="Parcel ID"
+                value={tracking.trackingId} onChange={(e) => setTracking((t) => ({ ...t, trackingId: e.target.value }))} />
+              <input className="rounded border bg-white px-2 py-1.5 text-xs" placeholder="Tracking URL"
+                value={tracking.trackingUrl} onChange={(e) => setTracking((t) => ({ ...t, trackingUrl: e.target.value }))} />
+            </div>
+            <button onClick={saveTracking} disabled={savingTracking}
+              className="mt-2 rounded-lg bg-orange-500 px-3 py-1.5 text-xs font-bold text-white hover:bg-orange-600 disabled:opacity-50">
+              {savingTracking ? '...' : 'Save Tracking'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

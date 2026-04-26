@@ -63,12 +63,12 @@ const ProductSchema = new mongoose.Schema({
   },
   images: [String],
   soldCount: { type: Number, default: 0, min: 0 },
+  stock: { type: Number, default: 9999, min: 0 }, // 9999 = effectively unlimited for legacy products
   reviews: [ReviewSchema],
   seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   isApproved: { type: Boolean, default: false },
   isActive: { type: Boolean, default: true },
-  createdAt: { type: Date, default: Date.now },
-  // Upgrade: Add stock, variants, etc.
+  createdAt: { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Product', ProductSchema);

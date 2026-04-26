@@ -55,7 +55,8 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Specific rate limit for auth routes
+// Specific rate limit for auth-attempt routes (login/register/reset),
+// not for authenticated admin management endpoints.
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -65,7 +66,16 @@ const authLimiter = rateLimit({
     res.status(429).json({ message: 'Too many auth attempts. Please wait and try again.' });
   }
 });
-app.use('/api/auth', authLimiter);
+const authAttemptPaths = [
+  '/api/auth/register',
+  '/api/auth/login',
+  '/api/auth/resend-otp',
+  '/api/auth/verify-otp',
+  '/api/auth/verify-email-link',
+  '/api/auth/forgot-password',
+  '/api/auth/reset-password'
+];
+app.use(authAttemptPaths, authLimiter);
 
 // Connect to MongoDB with retry logic
 const User = require('./models/User');

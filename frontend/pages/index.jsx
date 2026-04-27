@@ -16,6 +16,7 @@ const SHOP_CATEGORIES = [
   { label: 'Toys', emoji: '🧸', color: 'from-yellow-400 to-amber-400' },
   { label: 'Grocery', emoji: '🛒', color: 'from-lime-500 to-green-500' },
   { label: 'Food', emoji: '🍔', color: 'from-rose-400 to-pink-500' },
+  { label: 'Mango', emoji: '🥭', color: 'from-amber-400 to-orange-500' },
 ];
 
 const BANNERS = [
@@ -111,6 +112,7 @@ export default function Home() {
   const [flashSale, setFlashSale] = useState({ status: 'inactive', count: 0, nextEndsAt: null });
   const [flashSaleEndsIn, setFlashSaleEndsIn] = useState('00:00:00');
   const [recentlyViewed, setRecentlyViewed] = useState([]);
+  const [salesAndPreorders, setSalesAndPreorders] = useState([]);
 
   useEffect(() => {
     fetch(`${API_BASE}/dashboard/visit`, { method: 'POST' }).catch(() => {});
@@ -124,6 +126,11 @@ export default function Home() {
       .then((r) => r.json())
       .then((data) => setFlashSale({ status: data?.status || 'inactive', count: Number(data?.count || 0), nextEndsAt: data?.nextEndsAt || null }))
       .catch(() => {});
+
+    fetch(`${API_BASE}/products?saleType=sale,preorder&limit=8`)
+      .then((r) => r.json())
+      .then((data) => setSalesAndPreorders(Array.isArray(data.products) ? data.products : []))
+      .catch(() => setSalesAndPreorders([]));
 
     // Load recently viewed from localStorage
     try {
@@ -165,7 +172,7 @@ export default function Home() {
               : 'No flash sale active right now.'}
           </p>
           {flashSale.status === 'active' && (
-            <Link href="/category?sort=popular" className="mt-4 rounded-xl bg-indigo-500 px-4 py-2 text-center text-sm font-bold text-white hover:bg-indigo-600">
+            <Link href="/category?saleType=sale,preorder" className="mt-4 rounded-xl bg-indigo-500 px-4 py-2 text-center text-sm font-bold text-white hover:bg-indigo-600">
               Shop Flash Deals →
             </Link>
           )}
@@ -200,6 +207,19 @@ export default function Home() {
           ))}
         </div>
       </section>
+
+      {/* ── Flash Sales & Pre-orders ── */}
+      {salesAndPreorders.length > 0 && (
+        <section className="mx-auto max-w-7xl px-4 py-4 md:px-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold">⚡ Flash Sales & Pre-orders</h2>
+            <Link href="/category?saleType=sale,preorder" className="rounded-full border border-indigo-200 px-3 py-1 text-sm font-semibold text-indigo-500 hover:bg-indigo-50">View all →</Link>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {salesAndPreorders.map((p) => <ProductCard key={p._id} product={p} />)}
+          </div>
+        </section>
+      )}
 
       {/* ── Featured Products ── */}
       <section className="mx-auto max-w-7xl px-4 py-4 md:px-6">

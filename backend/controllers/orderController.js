@@ -83,28 +83,46 @@ exports.placeOrder = async (req, res) => {
 
     // Validate products, check stock, and calculate subtotal
     let subtotal = 0;
+    let totalMangoKg = 0;
+    let regularItemsCount = 0;
+
     const orderProducts = await Promise.all(products.map(async (item) => {
       const product = await Product.findById(item.product);
       if (!product || !product.isApproved) throw new Error('Invalid product');
       if (product.stock < Number(item.quantity || 1)) {
         throw new Error(`"${product.name}" only has ${product.stock} unit(s) left in stock`);
       }
+      
+      const qty = Number(item.quantity || 1);
+      if (product.category === 'Mango') {
+        totalMangoKg += qty;
+      } else {
+        regularItemsCount += qty;
+      }
+
       const effectivePrice = product.discountPrice ?? product.price;
-      subtotal += effectivePrice * item.quantity;
+      subtotal += effectivePrice * qty;
       return {
         product: product._id,
         name: product.name,
-        quantity: item.quantity,
+        quantity: qty,
         seller: product.seller,
         price: effectivePrice
       };
     }));
 
-    const totalItems = orderProducts.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-    const deliveryCharge = calculateDeliveryCharge({
+    if (totalMangoKg > 0 && (totalMangoKg < 10 || totalMangoKg > 40)) {
+      return res.status(400).json({ message: 'Mango orders must be between 10 kg and 40 kg per order.' });
+    }
+
+    const baseDeliveryCharge = regularItemsCount > 0 ? calculateDeliveryCharge({
       division: shippingAddress.division,
-      totalItems
-    });
+      totalItems: regularItemsCount
+    }) : 0;
+    
+    const mangoDeliveryCharge = totalMangoKg * 10;
+    const deliveryCharge = baseDeliveryCharge + mangoDeliveryCharge;
+
     let discountTotal = 0;
     let appliedCoupon = null;
 

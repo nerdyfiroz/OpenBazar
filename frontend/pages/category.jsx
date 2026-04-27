@@ -16,6 +16,7 @@ export default function Category() {
     minPrice: router.query.minPrice || '',
     maxPrice: router.query.maxPrice || '',
     rating: router.query.rating || '',
+    saleType: router.query.saleType || '',
     sort: router.query.sort || 'newest',
     q: router.query.q || ''
   }), [router.query]);
@@ -69,6 +70,16 @@ export default function Category() {
               <option value="4">4★ & above</option>
               <option value="3">3★ & above</option>
               <option value="2">2★ & above</option>
+            </select>
+          </FilterField>
+
+          <FilterField label="Sale Type">
+            <select value={query.saleType} onChange={(e) => updateFilter('saleType', e.target.value)} className="input">
+              <option value="">All</option>
+              <option value="sale">Flash Sale</option>
+              <option value="preorder">Pre-order</option>
+              <option value="sale,preorder">Sale & Pre-order</option>
+              <option value="regular">Regular</option>
             </select>
           </FilterField>
         </aside>

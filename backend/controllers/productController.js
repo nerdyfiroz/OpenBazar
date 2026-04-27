@@ -3,7 +3,7 @@
 const Product = require('../models/Product');
 const { processUploads } = require('../middleware/productUpload');
 
-const SELLER_ALLOWED_CATEGORIES = ['Electronics', 'Fashion', 'Beauty', 'Home & Living', 'Sports'];
+const SELLER_ALLOWED_CATEGORIES = ['Electronics', 'Fashion', 'Beauty', 'Home & Living', 'Sports', 'Mango'];
 
 const normalizeSellerCategory = (rawCategory) => {
   const normalized = String(rawCategory || '').trim().toLowerCase();
@@ -165,6 +165,7 @@ exports.getAllProducts = async (req, res) => {
       maxPrice,
       rating,
       seller,
+      saleType,
       sort = 'newest',
       page = 1,
       limit = 20
@@ -172,6 +173,10 @@ exports.getAllProducts = async (req, res) => {
 
     const filter = { isApproved: true, isActive: true };
     if (seller) filter.seller = seller; // Public seller profile filter
+
+    if (saleType) {
+      filter.saleType = { $in: String(saleType).split(',').map(s => s.trim()) };
+    }
 
     if (q) {
       filter.$or = [

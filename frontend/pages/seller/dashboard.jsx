@@ -41,6 +41,16 @@ export default function SellerDashboard() {
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [userProfile, setUserProfile] = useState(null);
+
+  // ── kyc state ──
+  const blankKyc = {
+    storeName: '', realName: '', idType: 'national-id', idNumber: '', bankDetails: '', phoneNumber: ''
+  };
+  const [kycForm, setKycForm] = useState(blankKyc);
+  const [kycFiles, setKycFiles] = useState({ idDocument: null, photo: null, faceVerification: null });
+  const [kycMsg, setKycMsg] = useState('');
+  const [kycSubmitting, setKycSubmitting] = useState(false);
 
   // ── flash sale state ──
   const [flashApps, setFlashApps] = useState([]);
@@ -86,6 +96,24 @@ export default function SellerDashboard() {
     } catch { setOrders([]); }
   };
 
+  const loadProfile = async (tk) => {
+    try {
+      const res = await fetch(`${API_BASE}/auth/me`, { headers: { Authorization: `Bearer ${tk}` } });
+      const data = await res.json();
+      setUserProfile(data);
+      if (data.sellerApplication) {
+        setKycForm({
+          storeName: data.sellerApplication.storeName || '',
+          realName: data.sellerApplication.realName || '',
+          idType: data.sellerApplication.idType || 'national-id',
+          idNumber: data.sellerApplication.idNumber || '',
+          bankDetails: data.sellerApplication.bankDetails || '',
+          phoneNumber: data.sellerApplication.phoneNumber || ''
+        });
+      }
+    } catch { /* ignore */ }
+  };
+
   const loadFlashApps = async (tk) => {
     try {
       const res = await fetch(`${API_BASE}/flash-sale/mine`, { headers: { Authorization: `Bearer ${tk}` } });
@@ -98,10 +126,9 @@ export default function SellerDashboard() {
     const tk = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     setToken(tk);
     if (tk) {
-      setLoading(true);
-      Promise.all([loadProducts(tk), loadOrders(tk), loadFlashApps(tk)]).finally(() => setLoading(false));
+      Promise.all([loadProducts(tk), loadOrders(tk), loadFlashApps(tk), loadProfile(tk)]).then(() => setLoading(false));
     } else {
-      setLoading(false);
+      router.push('/login');
     }
   }, []);
 
@@ -197,9 +224,39 @@ export default function SellerDashboard() {
       setFlashForm(blankFlashForm);
       await loadFlashApps(token);
     } catch (err) {
-      setFlashMsg('❌ ' + (err.message || 'Submission failed'));
+      setFlashMsg(err.message);
     } finally {
       setFlashSubmitting(false);
+    }
+  };
+
+  const submitKyc = async (e) => {
+    e.preventDefault();
+    setKycSubmitting(true);
+    setKycMsg('');
+
+    try {
+      const formData = new FormData();
+      Object.entries(kycForm).forEach(([k, v]) => formData.append(k, v));
+      if (kycFiles.idDocument) formData.append('idDocument', kycFiles.idDocument);
+      if (kycFiles.photo) formData.append('photo', kycFiles.photo);
+      if (kycFiles.faceVerification) formData.append('faceVerification', kycFiles.faceVerification);
+
+      const res = await fetch(`${API_BASE}/auth/seller/apply`, {
+        method: 'POST',
+        headers: authHeader,
+        body: formData
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || data.errors?.[0]?.msg || 'Failed to update documents');
+
+      setKycMsg('Profile and documents updated successfully!');
+      loadProfile(token);
+    } catch (err) {
+      setKycMsg(err.message);
+    } finally {
+      setKycSubmitting(false);
     }
   };
 
@@ -215,15 +272,6 @@ export default function SellerDashboard() {
       setFlashMsg(err.message || 'Failed to withdraw.');
     }
   };
-
-  // ── nav tabs ──────────────────────────────────────────────────────────────
-  const tabs = [
-    { key: 'overview', label: '📊 Overview' },
-    { key: 'products', label: '📦 My Products' },
-    { key: 'orders', label: '🛒 Orders' },
-    { key: 'add', label: editingId ? '✏️ Edit Product' : '➕ Add Product' },
-    { key: 'flash', label: '⚡ Flash Sale' }
-  ];
 
   return (
     <MarketplaceLayout>
@@ -250,18 +298,26 @@ export default function SellerDashboard() {
         )}
 
         {/* Tabs */}
-        <div className="mb-6 flex gap-2 border-b border-slate-200">
-          {tabs.map((t) => (
-            <button key={t.key} onClick={() => setTab(t.key)}
-              className={`px-4 py-2.5 text-sm font-semibold transition ${tab === t.key ? 'border-b-2 border-orange-500 text-orange-600' : 'text-slate-500 hover:text-slate-800'}`}>
-              {t.label}
+        <div className="flex flex-wrap gap-6 border-b border-slate-200 px-6 font-semibold text-slate-500">
+          {['overview', 'products', 'orders', 'add', 'flash', 'kyc'].map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`border-b-2 py-4 ${tab === t ? 'border-orange-500 text-orange-600' : 'border-transparent hover:text-slate-800'}`}
+            >
+              {t === 'overview' && '📊 Overview'}
+              {t === 'products' && '📦 My Products'}
+              {t === 'orders' && '🛒 Orders'}
+              {t === 'add' && '➕ Add Product'}
+              {t === 'flash' && '⚡ Flash Sale'}
+              {t === 'kyc' && '🏪 Store & KYC'}
             </button>
           ))}
         </div>
 
         {/* ── OVERVIEW ─────────────────────────────────────────────────────── */}
         {tab === 'overview' && (
-          <div className="space-y-6">
+          <div className="space-y-6 pt-6">
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               <StatCard label="Total Products" value={productStats.total} color="bg-orange-500" />
               <StatCard label="Approved" value={productStats.approved} color="bg-green-500" />
@@ -300,7 +356,7 @@ export default function SellerDashboard() {
 
         {/* ── PRODUCTS ─────────────────────────────────────────────────────── */}
         {tab === 'products' && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm mt-6">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-xl font-bold">Your Products ({products.length})</h2>
               <div className="flex gap-2">
@@ -346,7 +402,7 @@ export default function SellerDashboard() {
 
         {/* ── ORDERS ───────────────────────────────────────────────────────── */}
         {tab === 'orders' && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm mt-6">
             <h2 className="mb-4 text-xl font-bold">Orders ({orders.length})</h2>
             {orders.length === 0 ? <p className="text-sm text-slate-500">No orders yet.</p> : (
               <div className="space-y-3">
@@ -360,7 +416,7 @@ export default function SellerDashboard() {
 
         {/* ── ADD / EDIT FORM ───────────────────────────────────────────────── */}
         {tab === 'add' && (
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm mt-6">
             <h2 className="text-xl font-bold">{editingId ? 'Edit Product' : 'Add New Product'}</h2>
             {editingId && <p className="mt-1 text-xs text-amber-600">⚠ Editing will reset approval status — admin must re-approve.</p>}
 
@@ -419,12 +475,6 @@ export default function SellerDashboard() {
                   className="rounded-xl bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-60">
                   {submitting ? 'Saving...' : (editingId ? 'Save Changes' : 'Submit Product')}
                 </button>
-                {editingId && (
-                  <button type="button" onClick={() => { setEditingId(null); setForm(blankForm); setTab('products'); }}
-                    className="rounded-xl border border-slate-300 px-5 py-2.5 text-sm font-semibold hover:bg-slate-50">
-                    Cancel
-                  </button>
-                )}
               </div>
             </form>
           </div>
@@ -432,8 +482,7 @@ export default function SellerDashboard() {
 
         {/* ── FLASH SALE ────────────────────────────────────────────────── */}
         {tab === 'flash' && (
-          <div className="space-y-6">
-            {/* Apply form */}
+          <div className="space-y-6 pt-6">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-400 text-xl shadow-sm">⚡</div>
@@ -452,7 +501,6 @@ export default function SellerDashboard() {
               )}
 
               <form onSubmit={submitFlashApp} className="grid gap-4 md:grid-cols-2">
-                {/* Product picker */}
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-slate-700">Select Product *</label>
                   <select className="input" value={flashForm.productId} onChange={(e) => setFF('productId', e.target.value)} required>
@@ -463,12 +511,8 @@ export default function SellerDashboard() {
                       </option>
                     ))}
                   </select>
-                  {products.filter(p => p.isApproved && p.saleType !== 'preorder').length === 0 && (
-                    <p className="mt-1 text-xs text-amber-600">⚠ You need at least one approved non-preorder product to apply.</p>
-                  )}
                 </div>
 
-                {/* Discount % */}
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Discount % *</label>
                   <input className="input" type="number" min="1" max="90" placeholder="e.g. 30"
@@ -476,47 +520,33 @@ export default function SellerDashboard() {
                     onChange={(e) => {
                       const disc = Number(e.target.value);
                       setFF('requestedDiscount', e.target.value);
-                      // Auto-fill flash price
                       const sel = products.find(p => p._id === flashForm.productId);
                       if (sel && disc > 0) setFF('requestedPrice', (sel.price * (1 - disc / 100)).toFixed(0));
                     }} required />
                 </div>
 
-                {/* Flash price */}
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Flash Sale Price (৳) *</label>
                   <input className="input" type="number" min="1" placeholder="Auto-fills from discount"
                     value={flashForm.requestedPrice}
                     onChange={(e) => setFF('requestedPrice', e.target.value)} required />
-                  {flashForm.productId && flashForm.requestedPrice && (() => {
-                    const sel = products.find(p => p._id === flashForm.productId);
-                    if (!sel) return null;
-                    const saving = sel.price - Number(flashForm.requestedPrice);
-                    return saving > 0
-                      ? <p className="mt-1 text-xs text-green-600">Buyer saves ৳{saving.toFixed(0)} ({((saving / sel.price) * 100).toFixed(0)}% off)</p>
-                      : <p className="mt-1 text-xs text-red-500">Price must be less than ৳{sel.price}</p>;
-                  })()}
                 </div>
 
-                {/* Start date */}
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Sale Starts *</label>
                   <input className="input" type="datetime-local" value={flashForm.proposedStartAt}
                     onChange={(e) => setFF('proposedStartAt', e.target.value)} required />
                 </div>
 
-                {/* End date */}
                 <div>
                   <label className="mb-1 block text-sm font-medium text-slate-700">Sale Ends *</label>
                   <input className="input" type="datetime-local" value={flashForm.proposedEndAt}
                     onChange={(e) => setFF('proposedEndAt', e.target.value)} required />
                 </div>
 
-                {/* Note to admin */}
                 <div className="md:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-slate-700">Note to Admin (optional)</label>
-                  <textarea className="input min-h-[80px]" placeholder="Tell the admin why this product is great for a flash deal..."
-                    value={flashForm.sellerNote} onChange={(e) => setFF('sellerNote', e.target.value)} />
+                  <textarea className="input min-h-[80px]" value={flashForm.sellerNote} onChange={(e) => setFF('sellerNote', e.target.value)} />
                 </div>
 
                 <div className="md:col-span-2">
@@ -583,6 +613,68 @@ export default function SellerDashboard() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* ── KYC / Store Tab ── */}
+        {tab === 'kyc' && (
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm mt-6">
+            <h2 className="mb-4 text-xl font-bold">Store Settings & Documents</h2>
+            {kycMsg && <div className="mb-4 rounded bg-slate-100 p-3 text-sm font-semibold">{kycMsg}</div>}
+            <form onSubmit={submitKyc} className="grid max-w-2xl gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-slate-600">Store Name</label>
+                  <input className="input" value={kycForm.storeName} onChange={(e) => setKycForm(p => ({ ...p, storeName: e.target.value }))} required />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-slate-600">Your Full Name</label>
+                  <input className="input" value={kycForm.realName} onChange={(e) => setKycForm(p => ({ ...p, realName: e.target.value }))} required />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-slate-600">Phone Number</label>
+                  <input className="input" value={kycForm.phoneNumber} onChange={(e) => setKycForm(p => ({ ...p, phoneNumber: e.target.value }))} required />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-slate-600">Bank Details</label>
+                  <input className="input" value={kycForm.bankDetails} onChange={(e) => setKycForm(p => ({ ...p, bankDetails: e.target.value }))} placeholder="Account No, Bank Name" required />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-slate-600">ID Type</label>
+                  <select className="input" value={kycForm.idType} onChange={(e) => setKycForm(p => ({ ...p, idType: e.target.value }))} required>
+                    <option value="national-id">National ID</option>
+                    <option value="driving-license">Driving License</option>
+                    <option value="passport">Passport</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-bold text-slate-600">ID Number</label>
+                  <input className="input" value={kycForm.idNumber} onChange={(e) => setKycForm(p => ({ ...p, idNumber: e.target.value }))} required />
+                </div>
+              </div>
+
+              <div className="mt-4 border-t pt-4">
+                <h3 className="mb-3 font-semibold">Update Documents (Optional)</h3>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">ID Document</label>
+                    <input type="file" accept="image/*" className="text-xs" onChange={(e) => setKycFiles(p => ({ ...p, idDocument: e.target.files[0] }))} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">Profile Photo</label>
+                    <input type="file" accept="image/*" className="text-xs" onChange={(e) => setKycFiles(p => ({ ...p, photo: e.target.files[0] }))} />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-bold text-slate-600">Face Verification</label>
+                    <input type="file" accept="image/*" className="text-xs" onChange={(e) => setKycFiles(p => ({ ...p, faceVerification: e.target.files[0] }))} />
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" disabled={kycSubmitting} className="mt-4 w-fit rounded-xl bg-indigo-600 px-6 py-2.5 font-bold text-white transition hover:bg-indigo-700 disabled:opacity-50">
+                {kycSubmitting ? 'Saving...' : 'Save Store & KYC Info'}
+              </button>
+            </form>
           </div>
         )}
 

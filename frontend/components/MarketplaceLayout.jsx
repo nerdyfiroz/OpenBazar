@@ -168,6 +168,9 @@ export default function MarketplaceLayout({ children }) {
           <div>
             <h3 className="text-lg font-bold text-orange-500">OpenBazar</h3>
             <p className="mt-2 text-sm text-slate-600">Bangladesh-first marketplace for electronics, fashion, groceries and more.</p>
+            <p className="mt-2 text-sm font-semibold text-orange-600">
+              <a href="mailto:support@open-bazar.me">support@open-bazar.me</a>
+            </p>
             <p className="mt-3 text-xs text-slate-400">📍 Dhaka, Bangladesh</p>
           </div>
           <FooterColumn title="Company" links={[['About', '/about'], ['Contact', '/contact'], ['Terms', '/terms'], ['Privacy', '/privacy-policy']]} />

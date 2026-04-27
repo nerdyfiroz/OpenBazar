@@ -4,6 +4,8 @@ import MarketplaceLayout from '../../components/MarketplaceLayout';
 import ProductCard from '../../components/ProductCard';
 import { useStore } from '../../components/StoreProvider';
 import { resolveImageSrc, FALLBACK_IMAGE } from '../../utils/resolveImageSrc';
+import VerifiedBadge from '../../components/VerifiedBadge';
+import Link from 'next/link';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -150,6 +152,18 @@ export default function ProductDetails() {
             <div className="mt-2 flex items-center gap-2 text-sm">
               <span className="text-amber-400">{'★'.repeat(Math.round(product.rating || 4))}</span>
               <span className="text-slate-500">{Number(product.rating || 4.2).toFixed(1)} · {product.numReviews || 0} reviews</span>
+              
+              {product.seller && (
+                <>
+                  <span className="text-slate-300">|</span>
+                  <Link href={`/seller/${product.seller._id}`} className="flex items-center gap-1 font-semibold text-slate-700 hover:text-orange-500">
+                    {product.seller.sellerApplication?.storeName || product.seller.name}
+                    {(product.seller.isSellerVerifiedBadge || product.seller.isVerified) && (
+                      <VerifiedBadge className="h-4 w-4" />
+                    )}
+                  </Link>
+                </>
+              )}
             </div>
 
             {/* Price */}

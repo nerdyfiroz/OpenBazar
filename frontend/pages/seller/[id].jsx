@@ -4,6 +4,7 @@ import Link from 'next/link';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
 import ProductCard from '../../components/ProductCard';
 import { resolveImageSrc, FALLBACK_IMAGE } from '../../utils/resolveImageSrc';
+import VerifiedBadge from '../../components/VerifiedBadge';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -63,10 +64,11 @@ export default function SellerProfile() {
               <div className="flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-2xl font-black">{seller.storeName || seller.name}</h1>
-                  {seller.isSellerVerifiedBadge && (
-                    <span className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
-                      <span className="text-sm">✓</span> Golden Badge
-                    </span>
+                  {(seller.isSellerVerifiedBadge || seller.isVerified) && (
+                    <div className="flex items-center gap-1.5 rounded-full bg-amber-50 px-3 py-1 ring-1 ring-amber-200">
+                      <VerifiedBadge className="h-4 w-4" />
+                      <span className="text-[10px] font-black uppercase tracking-wider text-amber-700">Golden Verified</span>
+                    </div>
                   )}
                 </div>
                 <p className="mt-1 text-sm text-slate-500">Verified Seller on OpenBazar</p>

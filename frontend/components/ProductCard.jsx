@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { useStore } from './StoreProvider';
 import { resolveImageSrc, FALLBACK_IMAGE } from '../utils/resolveImageSrc';
+import VerifiedBadge from './VerifiedBadge';
 
 export default function ProductCard({ product }) {
   const { addToCart, toggleWishlist, wishlist } = useStore();
@@ -37,9 +38,11 @@ export default function ProductCard({ product }) {
 
         {product.seller && (
           <div className="flex items-center gap-1.5 text-xs text-slate-500">
-            <span className="font-semibold text-slate-700">{product.seller.sellerApplication?.storeName || product.seller.name}</span>
-            {product.seller.isSellerVerifiedBadge && (
-              <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white" title="Verified Seller">✓</span>
+            <span className="font-semibold text-slate-700 truncate max-w-[120px]" title={product.seller.sellerApplication?.storeName || product.seller.name}>
+              {product.seller.sellerApplication?.storeName || product.seller.name}
+            </span>
+            {(product.seller.isSellerVerifiedBadge || product.seller.isVerified) && (
+              <VerifiedBadge className="h-3.5 w-3.5" />
             )}
           </div>
         )}

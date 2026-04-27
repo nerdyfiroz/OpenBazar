@@ -9,7 +9,7 @@ const Product = require('../models/Product');
 const SystemSetting = require('../models/SystemSetting');
 const { authenticate, authorize } = require('../middleware/auth');
 const { sendEmail, generateOTPTemplate } = require('../utils/emailSender');
-const { uploadSellerVerification } = require('../middleware/sellerVerificationUpload');
+const { uploadSellerVerification, processVerificationUploads } = require('../middleware/sellerVerificationUpload');
 
 const router = express.Router();
 
@@ -403,18 +403,28 @@ router.post('/seller/apply', authenticate, uploadSellerVerification, [
     if (!user) return res.status(404).json({ message: 'User not found' });
     if (user.role === 'admin') return res.status(400).json({ message: 'Admin account cannot apply as seller' });
 
+    await processVerificationUploads(req);
+
     const idDocument = req.files?.idDocument?.[0];
     const photo = req.files?.photo?.[0];
     const faceVerification = req.files?.faceVerification?.[0];
 
     // Allow existing sellers to update documents and details
     const isExistingSeller = user.role === 'seller';
-    const isUpdatingDocs = !idDocument && !photo && !faceVerification;
-
+    
     // If they aren't already an approved seller, they MUST upload documents
     if (!isExistingSeller && (!idDocument || !photo || !faceVerification)) {
       return res.status(400).json({ message: 'ID document, photo, and face verification photo are required' });
     }
+
+    // Helper to get URL (Cloudinary or relative disk path)
+    const toUrl = (file) => {
+      if (!file) return null;
+      if (file.path && (file.path.startsWith('http://') || file.path.startsWith('https://'))) {
+        return file.path;
+      }
+      return `/uploads/seller-verification/${file.filename}`;
+    };
 
     user.sellerApplication = {
       ...user.sellerApplication,
@@ -425,9 +435,9 @@ router.post('/seller/apply', authenticate, uploadSellerVerification, [
       idNumber: req.body.idNumber,
       bankDetails: req.body.bankDetails,
       phoneNumber: req.body.phoneNumber,
-      photoUrl: photo ? `/uploads/seller-verification/${photo.filename}` : user.sellerApplication.photoUrl,
-      faceVerificationUrl: faceVerification ? `/uploads/seller-verification/${faceVerification.filename}` : user.sellerApplication.faceVerificationUrl,
-      idDocumentUrl: idDocument ? `/uploads/seller-verification/${idDocument.filename}` : user.sellerApplication.idDocumentUrl,
+      photoUrl: photo ? toUrl(photo) : user.sellerApplication.photoUrl,
+      faceVerificationUrl: faceVerification ? toUrl(faceVerification) : user.sellerApplication.faceVerificationUrl,
+      idDocumentUrl: idDocument ? toUrl(idDocument) : user.sellerApplication.idDocumentUrl,
       submittedAt: new Date(),
       reviewedAt: isExistingSeller ? user.sellerApplication.reviewedAt : null,
       reviewNote: isExistingSeller ? user.sellerApplication.reviewNote : ''
@@ -592,6 +602,7 @@ router.put('/admin/seller-applications/:id', authenticate, authorize(['admin']),
     if (reviewStatus === 'approved') {
       user.role = 'seller';
       user.isBlocked = false;
+      user.isSellerVerifiedBadge = true; // Grant golden badge upon approval
     }
 
     await user.save();

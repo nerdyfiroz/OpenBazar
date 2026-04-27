@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
+import { resolveImageSrc } from '../../utils/resolveImageSrc';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 const API_ORIGIN = API_BASE.replace(/\/api\/?$/, '');
@@ -1003,7 +1004,10 @@ export default function AdminDashboard() {
                 {sellerApplications.map((u) => (
                   <tr key={u._id} className="border-b align-top">
                     <td className="py-2 pr-3">
-                      <p className="font-medium">{u.sellerApplication?.realName || u.name}</p>
+                      <div className="flex items-center gap-1 font-medium">
+                        {u.sellerApplication?.realName || u.name}
+                        {u.isSellerVerifiedBadge && <VerifiedBadge className="h-4 w-4" />}
+                      </div>
                       <p className="text-xs text-slate-500">{u.email}</p>
                     </td>
                     <td className="py-2 pr-3">
@@ -1016,13 +1020,13 @@ export default function AdminDashboard() {
                     <td className="py-2 pr-3">
                       <div className="mb-2 flex flex-wrap gap-2 text-xs">
                         {u.sellerApplication?.idDocumentUrl && (
-                          <a className="underline" href={`${API_ORIGIN}${u.sellerApplication.idDocumentUrl}`} target="_blank" rel="noreferrer">ID Doc</a>
+                          <a className="underline" href={resolveImageSrc(u.sellerApplication.idDocumentUrl)} target="_blank" rel="noreferrer">ID Doc</a>
                         )}
                         {u.sellerApplication?.photoUrl && (
-                          <a className="underline" href={`${API_ORIGIN}${u.sellerApplication.photoUrl}`} target="_blank" rel="noreferrer">Photo</a>
+                          <a className="underline" href={resolveImageSrc(u.sellerApplication.photoUrl)} target="_blank" rel="noreferrer">Photo</a>
                         )}
                         {u.sellerApplication?.faceVerificationUrl && (
-                          <a className="underline" href={`${API_ORIGIN}${u.sellerApplication.faceVerificationUrl}`} target="_blank" rel="noreferrer">Face Verify</a>
+                          <a className="underline" href={resolveImageSrc(u.sellerApplication.faceVerificationUrl)} target="_blank" rel="noreferrer">Face Verify</a>
                         )}
                       </div>
                       <div className="flex gap-2">
@@ -1053,7 +1057,10 @@ export default function AdminDashboard() {
                 {badgeRequests.map((u) => (
                   <tr key={u._id} className="border-b align-top">
                     <td className="py-2 pr-3">
-                      <p className="font-medium">{u.name}</p>
+                      <div className="flex items-center gap-1 font-medium">
+                        {u.name}
+                        {u.isSellerVerifiedBadge && <VerifiedBadge className="h-4 w-4" />}
+                      </div>
                       <p className="text-xs text-slate-500">{u.email}</p>
                     </td>
                     <td className="py-2 pr-3">৳{Number(u.sellerVerification?.tipPaidAmount || 0).toFixed(2)}</td>

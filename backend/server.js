@@ -43,6 +43,19 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
+
+// Ensure uploads directories exist
+const uploadDirs = [
+  path.join(__dirname, 'uploads'),
+  path.join(__dirname, 'uploads', 'products'),
+  path.join(__dirname, 'uploads', 'seller-verification')
+];
+uploadDirs.forEach(dir => {
+  if (!require('fs').existsSync(dir)) {
+    require('fs').mkdirSync(dir, { recursive: true });
+  }
+});
+
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Basic rate limiting

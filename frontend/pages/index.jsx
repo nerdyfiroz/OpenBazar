@@ -194,14 +194,14 @@ export default function Home() {
       {/* ── Categories ── */}
       <section className="mx-auto max-w-7xl px-4 py-6 md:px-6">
         <h2 className="mb-4 text-xl font-bold">Shop by Category</h2>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 md:grid-cols-9">
+        <div className="grid grid-cols-3 gap-4 sm:grid-cols-5 md:grid-cols-9">
           {SHOP_CATEGORIES.map((cat) => (
             <Link key={cat.label} href={`/category?category=${encodeURIComponent(cat.label)}`}
-              className="group flex flex-col items-center rounded-2xl border border-slate-100 bg-white p-3 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${cat.color} text-2xl shadow-sm`}>
+              className="group flex flex-col items-center justify-center rounded-2xl border border-slate-100 bg-white p-4 sm:p-5 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-md">
+              <div className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br ${cat.color} text-3xl shadow-sm transition-transform group-hover:scale-110`}>
                 {cat.emoji}
               </div>
-              <p className="mt-2 text-xs font-semibold text-slate-700">{cat.label}</p>
+              <p className="mt-3 text-sm font-bold text-slate-700">{cat.label}</p>
             </Link>
           ))}
         </div>

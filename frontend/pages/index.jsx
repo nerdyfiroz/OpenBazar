@@ -20,6 +20,14 @@ const SHOP_CATEGORIES = [
 
 const BANNERS = [
   {
+    title: '🥭 Special Summer Mango Festival',
+    subtitle: 'Farm fresh mangoes, 10kg to 40kg. Special ৳10/kg delivery!',
+    badge: '🌞 Summer Special',
+    cta: 'Shop Mangoes',
+    href: '/category?category=Mango',
+    bg: 'from-amber-400 via-orange-500 to-rose-500',
+  },
+  {
     title: "Bangladesh's Favorite Marketplace",
     subtitle: 'Up to 70% off on electronics, fashion, beauty & more.',
     badge: '🎉 Mega Campaign',
@@ -181,11 +189,11 @@ export default function Home() {
       {/* ── Marquee trust bar ── */}
       <div className="overflow-hidden border-y border-slate-100 bg-white py-2 text-xs text-slate-500">
         <div className="animate-marquee flex gap-16 whitespace-nowrap px-4">
-          {['🚚 Fast Nationwide Delivery', '🔒 Secure Payments', '💯 100% Authentic Products', '↩️ 3-Day Easy Returns', '🎁 Free Delivery on 4+ Items', '⭐ 50,000+ Happy Customers', '🏪 Trusted Sellers Only'].map((t) => (
+          {['🚚 Fast Nationwide Delivery', '🥭 Summer Mango Festival - ৳10/kg Delivery!', '🔒 Secure Payments', '💯 100% Authentic Products', '↩️ 3-Day Easy Returns', '🎁 Free Delivery on 4+ Items', '⭐ 50,000+ Happy Customers', '🏪 Trusted Sellers Only'].map((t) => (
             <span key={t}>{t}</span>
           ))}
           {/* Duplicate for seamless loop */}
-          {['🚚 Fast Nationwide Delivery', '🔒 Secure Payments', '💯 100% Authentic Products', '↩️ 3-Day Easy Returns', '🎁 Free Delivery on 4+ Items', '⭐ 50,000+ Happy Customers', '🏪 Trusted Sellers Only'].map((t) => (
+          {['🚚 Fast Nationwide Delivery', '🥭 Summer Mango Festival - ৳10/kg Delivery!', '🔒 Secure Payments', '💯 100% Authentic Products', '↩️ 3-Day Easy Returns', '🎁 Free Delivery on 4+ Items', '⭐ 50,000+ Happy Customers', '🏪 Trusted Sellers Only'].map((t) => (
             <span key={`dup-${t}`}>{t}</span>
           ))}
         </div>

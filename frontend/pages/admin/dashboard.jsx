@@ -536,9 +536,10 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Daily Visits</h3>
                 <div className="flex h-48 items-end gap-1 border-b border-slate-100 pb-2">
-                  {dashboard.historicalVisitors?.slice().reverse().map((v, i) => {
-                    const max = Math.max(...(dashboard.historicalVisitors?.map(d => d.count) || [1]));
-                    const height = (v.count / max) * 100;
+                  {(dashboard.historicalVisitors || []).slice().reverse().map((v, i) => {
+                    const dailyCounts = (dashboard.historicalVisitors || []).map(d => Number(d.count) || 0);
+                    const max = Math.max(...dailyCounts, 1);
+                    const height = ((Number(v.count) || 0) / max) * 100;
                     return (
                       <div key={v.day} className="group relative flex-1">
                         <div 
@@ -561,9 +562,11 @@ export default function AdminDashboard() {
                 <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Hourly Breakdown (Today)</h3>
                 <div className="flex h-48 items-end gap-1 border-b border-slate-100 pb-2">
                   {Array.from({ length: 24 }).map((_, hour) => {
-                    const today = dashboard.historicalVisitors?.[0];
-                    const count = today?.hourly?.[hour] || 0;
-                    const maxHourly = today ? Math.max(...Object.values(today.hourly || { 0: 0 }), 1) : 1;
+                    const today = (dashboard.historicalVisitors || [])[0];
+                    const hourlyData = today?.hourly || {};
+                    const count = Number(hourlyData[hour] || hourlyData[String(hour)] || 0);
+                    const hourlyValues = Object.values(hourlyData).map(v => Number(v) || 0);
+                    const maxHourly = Math.max(...hourlyValues, 1);
                     const height = (count / maxHourly) * 100;
                     return (
                       <div key={hour} className="group relative flex-1">

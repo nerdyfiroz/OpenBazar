@@ -91,6 +91,10 @@ export default function Login() {
               <>
                 <input className="input" placeholder="Full Name" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} required />
                 <input className="input" placeholder="Phone Number" value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} required />
+                <select className="input" value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} required>
+                  <option value="user">Join as Buyer</option>
+                  <option value="seller">Join as Seller</option>
+                </select>
               </>
             )}
 

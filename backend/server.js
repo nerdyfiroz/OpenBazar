@@ -26,7 +26,9 @@ const corsOptions = {
     const isAllowed =
       allowedOrigins.includes(origin) ||
       /^https:\/\/(.+\.)?open-bazar\.me$/.test(origin) ||
-      /^https:\/\/(.+\.)?onrender\.com$/.test(origin);
+      /^https:\/\/(.+\.)?onrender\.com$/.test(origin) ||
+      /^https:\/\/(.+\.)?vercel\.app$/.test(origin) ||
+      origin.includes('localhost');
 
     return isAllowed
       ? callback(null, true)

@@ -191,9 +191,10 @@ exports.getAllProducts = async (req, res) => {
         saleTypeConditions.push({ saleType: { $in: exactTypes } });
       }
 
-    if (saleTypeConditions.length > 0) {
-      filter.$and = filter.$and || [];
-      filter.$and.push({ $or: saleTypeConditions });
+      if (saleTypeConditions.length > 0) {
+        filter.$and = filter.$and || [];
+        filter.$and.push({ $or: saleTypeConditions });
+      }
     }
 
     if (q) {

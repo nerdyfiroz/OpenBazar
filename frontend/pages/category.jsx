@@ -17,6 +17,7 @@ export default function Category() {
     maxPrice: router.query.maxPrice || '',
     rating: router.query.rating || '',
     saleType: router.query.saleType || '',
+    trustedSeller: router.query.trustedSeller || '',
     sort: router.query.sort || 'newest',
     q: router.query.q || ''
   }), [router.query]);
@@ -50,7 +51,18 @@ export default function Category() {
           <h2 className="mb-4 text-lg font-bold">Filters</h2>
 
           <FilterField label="Category">
-            <input value={query.category} onChange={(e) => updateFilter('category', e.target.value)} className="input" placeholder="e.g. Electronics" />
+            <select value={query.category} onChange={(e) => updateFilter('category', e.target.value)} className="input">
+              <option value="">All Categories</option>
+              <option value="Electronics">Electronics</option>
+              <option value="Fashion">Fashion</option>
+              <option value="Beauty">Beauty</option>
+              <option value="Home & Living">Home & Living</option>
+              <option value="Sports">Sports</option>
+              <option value="Toys">Toys</option>
+              <option value="Grocery">Grocery</option>
+              <option value="Food">Food</option>
+              <option value="Mango">Mango</option>
+            </select>
           </FilterField>
 
           <FilterField label="Brand">
@@ -76,10 +88,17 @@ export default function Category() {
           <FilterField label="Sale Type">
             <select value={query.saleType} onChange={(e) => updateFilter('saleType', e.target.value)} className="input">
               <option value="">All</option>
-              <option value="sale">Flash Sale</option>
+              <option value="sale">Flash Sale & Discounts</option>
               <option value="preorder">Pre-order</option>
               <option value="sale,preorder">Sale & Pre-order</option>
               <option value="regular">Regular</option>
+            </select>
+          </FilterField>
+
+          <FilterField label="Seller Type">
+            <select value={query.trustedSeller} onChange={(e) => updateFilter('trustedSeller', e.target.value)} className="input">
+              <option value="">All Sellers</option>
+              <option value="true">Trusted Sellers (Golden Badge)</option>
             </select>
           </FilterField>
         </aside>
@@ -91,6 +110,8 @@ export default function Category() {
               <option value="newest">Newest</option>
               <option value="price_asc">Price: Low to High</option>
               <option value="price_desc">Price: High to Low</option>
+              <option value="top_rating">Top Rating</option>
+              <option value="top_sale">Top Sale</option>
               <option value="popular">Popularity</option>
             </select>
           </div>

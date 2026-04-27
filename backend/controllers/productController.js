@@ -157,6 +157,7 @@ exports.getSellerProducts = async (req, res) => {
 
 exports.getAllProducts = async (req, res) => {
   try {
+    const User = require('../models/User'); // Need User for trusted seller filter
     const {
       q,
       category,
@@ -166,6 +167,7 @@ exports.getAllProducts = async (req, res) => {
       rating,
       seller,
       saleType,
+      trustedSeller,
       sort = 'newest',
       page = 1,
       limit = 20
@@ -173,6 +175,11 @@ exports.getAllProducts = async (req, res) => {
 
     const filter = { isApproved: true, isActive: true };
     if (seller) filter.seller = seller; // Public seller profile filter
+
+    if (trustedSeller === 'true') {
+      const verifiedSellers = await User.find({ isSellerVerifiedBadge: true }).select('_id');
+      filter.seller = { $in: verifiedSellers.map(u => u._id) };
+    }
 
     if (saleType) {
       const types = String(saleType).split(',').map(s => s.trim());
@@ -221,6 +228,8 @@ exports.getAllProducts = async (req, res) => {
     if (sort === 'price_asc') sortOption = { price: 1 };
     if (sort === 'price_desc') sortOption = { price: -1 };
     if (sort === 'popular') sortOption = { soldCount: -1, rating: -1, createdAt: -1 };
+    if (sort === 'top_rating') sortOption = { rating: -1, numReviews: -1 };
+    if (sort === 'top_sale') sortOption = { soldCount: -1 };
 
     const parsedPage = Math.max(Number(page) || 1, 1);
     const parsedLimit = Math.min(Math.max(Number(limit) || 20, 1), 100);

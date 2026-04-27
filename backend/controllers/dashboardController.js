@@ -75,6 +75,10 @@ exports.adminDashboard = async (req, res) => {
     const totalCommission = await Order.aggregate([
       { $group: { _id: null, total: { $sum: '$commission' } } }
     ]);
+    const historicalVisitors = await VisitorStat.find()
+      .sort({ day: -1 })
+      .limit(14);
+
     res.json({
       totalOrders,
       totalSellers,
@@ -83,6 +87,7 @@ exports.adminDashboard = async (req, res) => {
       totalProductsSold: soldProductsAgg[0]?.totalProductsSold || 0,
       totalVisitors: visitorsAgg[0]?.totalVisitors || 0,
       totalCommission: totalCommission[0]?.total || 0,
+      historicalVisitors,
       topSellingProducts: topSellingProductsAgg.map((item) => ({
         productId: item._id,
         name: nameMap[item._id.toString()] || 'Unknown Product',
@@ -138,11 +143,18 @@ exports.flashSaleStatus = async (req, res) => {
 
 exports.trackVisitor = async (req, res) => {
   try {
-    const day = new Date().toISOString().slice(0, 10);
+    const now = new Date();
+    const day = now.toISOString().slice(0, 10);
+    const hour = now.getHours();
 
     await VisitorStat.findOneAndUpdate(
       { day },
-      { $inc: { count: 1 } },
+      { 
+        $inc: { 
+          count: 1,
+          [`hourly.${hour}`]: 1 
+        } 
+      },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 

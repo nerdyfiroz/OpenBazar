@@ -513,13 +513,74 @@ export default function AdminDashboard() {
 
       {!loading && dashboard && (
         <>
-          <section className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard label="Total Visitors" value={dashboard.totalVisitors} />
             <StatCard label="Total Orders" value={dashboard.totalOrders} />
             <StatCard label="Total Products" value={dashboard.totalProducts} />
             <StatCard label="Products Sold" value={dashboard.totalProductsSold} />
             <StatCard label="Total Sales" value={`৳${Number(dashboard.totalSales || 0).toFixed(2)}`} />
             <StatCard label="Total Sellers" value={dashboard.totalSellers} />
+            <StatCard label="Commission" value={`৳${Number(dashboard.totalCommission || 0).toFixed(2)}`} />
+            <StatCard label="Avg. Order" value={`৳${(Number(dashboard.totalSales || 0) / (Number(dashboard.totalOrders) || 1)).toFixed(2)}`} />
+          </section>
+
+          {/* ─── Visitor Analytics ─── */}
+          <section className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-slate-800">Visitor Analytics</h2>
+              <p className="text-xs text-slate-500">Last 14 days performance</p>
+            </div>
+            
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Daily Stats */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Daily Visits</h3>
+                <div className="flex h-48 items-end gap-1 border-b border-slate-100 pb-2">
+                  {dashboard.historicalVisitors?.slice().reverse().map((v, i) => {
+                    const max = Math.max(...(dashboard.historicalVisitors?.map(d => d.count) || [1]));
+                    const height = (v.count / max) * 100;
+                    return (
+                      <div key={v.day} className="group relative flex-1">
+                        <div 
+                          style={{ height: `${height}%` }}
+                          className="w-full rounded-t bg-orange-400 transition-all group-hover:bg-orange-600"
+                        ></div>
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-slate-800 px-2 py-1 text-[10px] text-white group-hover:block whitespace-nowrap z-10">
+                          {v.day}: {v.count} visitors
+                        </div>
+                        <div className="mt-1 text-[8px] text-slate-400 rotate-45 origin-left">{v.day.slice(5)}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Hourly Stats (Current Day) */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-semibold text-slate-600 uppercase tracking-wider">Hourly Breakdown (Today)</h3>
+                <div className="flex h-48 items-end gap-1 border-b border-slate-100 pb-2">
+                  {Array.from({ length: 24 }).map((_, hour) => {
+                    const today = dashboard.historicalVisitors?.[0];
+                    const count = today?.hourly?.[hour] || 0;
+                    const maxHourly = today ? Math.max(...Object.values(today.hourly || { 0: 0 }), 1) : 1;
+                    const height = (count / maxHourly) * 100;
+                    return (
+                      <div key={hour} className="group relative flex-1">
+                        <div 
+                          style={{ height: `${height}%` }}
+                          className="w-full rounded-t bg-blue-400 transition-all group-hover:bg-blue-600"
+                        ></div>
+                        <div className="absolute bottom-full left-1/2 mb-2 hidden -translate-x-1/2 rounded bg-slate-800 px-2 py-1 text-[10px] text-white group-hover:block whitespace-nowrap z-10">
+                          {hour}:00 - {count} visits
+                        </div>
+                        <div className="mt-1 text-[8px] text-slate-400">{hour}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
           </section>
 
           <section className="rounded-lg border border-gray-200 bg-white p-4">

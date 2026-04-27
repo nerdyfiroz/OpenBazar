@@ -175,15 +175,36 @@ exports.getAllProducts = async (req, res) => {
     if (seller) filter.seller = seller; // Public seller profile filter
 
     if (saleType) {
-      filter.saleType = { $in: String(saleType).split(',').map(s => s.trim()) };
+      const types = String(saleType).split(',').map(s => s.trim());
+      const saleTypeConditions = [];
+      
+      // If 'sale' is requested, also include regular products that have an active discount
+      if (types.includes('sale')) {
+        saleTypeConditions.push({ saleType: 'sale' });
+        saleTypeConditions.push({ salePercent: { $gt: 0 } });
+        saleTypeConditions.push({ discountPrice: { $gt: 0 } });
+      }
+      
+      // Remove 'sale' from basic exact matches if we handled it above, but we can just use $or
+      const exactTypes = types.filter(t => t !== 'sale');
+      if (exactTypes.length > 0) {
+        saleTypeConditions.push({ saleType: { $in: exactTypes } });
+      }
+
+    if (saleTypeConditions.length > 0) {
+      filter.$and = filter.$and || [];
+      filter.$and.push({ $or: saleTypeConditions });
     }
 
     if (q) {
-      filter.$or = [
-        { name: { $regex: q, $options: 'i' } },
-        { category: { $regex: q, $options: 'i' } },
-        { brand: { $regex: q, $options: 'i' } }
-      ];
+      filter.$and = filter.$and || [];
+      filter.$and.push({
+        $or: [
+          { name: { $regex: q, $options: 'i' } },
+          { category: { $regex: q, $options: 'i' } },
+          { brand: { $regex: q, $options: 'i' } }
+        ]
+      });
     }
 
     if (category) filter.category = { $regex: category, $options: 'i' };

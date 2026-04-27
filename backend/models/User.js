@@ -12,6 +12,7 @@ const UserSchema = new mongoose.Schema({
   isSellerVerifiedBadge: { type: Boolean, default: false },
   sellerApplication: {
     status: { type: String, enum: ['none', 'pending', 'approved', 'rejected'], default: 'none' },
+    storeName: { type: String, default: '' },
     realName: { type: String, default: '' },
     idType: { type: String, enum: ['', 'national-id', 'driving-license', 'passport'], default: '' },
     idNumber: { type: String, default: '' },

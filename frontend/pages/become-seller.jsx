@@ -11,6 +11,7 @@ export default function BecomeSellerPage() {
   const [submittingBadge, setSubmittingBadge] = useState(false);
 
   const [applicationForm, setApplicationForm] = useState({
+    storeName: '',
     realName: '',
     idType: 'national-id',
     idNumber: '',
@@ -59,6 +60,16 @@ export default function BecomeSellerPage() {
       if (!res.ok) throw new Error(data.message || 'Failed to load seller status');
       setStatusData(data);
       setBadgeForm((prev) => ({ ...prev, tipAmount: data.verificationFee || 0 }));
+      if (data.sellerApplication) {
+        setApplicationForm({
+          storeName: data.sellerApplication.storeName || '',
+          realName: data.sellerApplication.realName || '',
+          idType: data.sellerApplication.idType || 'national-id',
+          idNumber: data.sellerApplication.idNumber || '',
+          bankDetails: data.sellerApplication.bankDetails || '',
+          phoneNumber: data.sellerApplication.phoneNumber || ''
+        });
+      }
     } catch (err) {
       setMessage(err.message || 'Failed to load seller status');
     } finally {
@@ -75,7 +86,9 @@ export default function BecomeSellerPage() {
     e.preventDefault();
     if (!token) return;
 
-    if (!applicationFiles.idDocument || !applicationFiles.photo || !applicationFiles.faceVerification) {
+    const isExistingSeller = statusData?.role === 'seller';
+    
+    if (!isExistingSeller && (!applicationFiles.idDocument || !applicationFiles.photo || !applicationFiles.faceVerification)) {
       setMessage('Please upload ID document, photo, and face verification image.');
       return;
     }
@@ -86,9 +99,9 @@ export default function BecomeSellerPage() {
     try {
       const formData = new FormData();
       Object.entries(applicationForm).forEach(([key, value]) => formData.append(key, value));
-      formData.append('idDocument', applicationFiles.idDocument);
-      formData.append('photo', applicationFiles.photo);
-      formData.append('faceVerification', applicationFiles.faceVerification);
+      if (applicationFiles.idDocument) formData.append('idDocument', applicationFiles.idDocument);
+      if (applicationFiles.photo) formData.append('photo', applicationFiles.photo);
+      if (applicationFiles.faceVerification) formData.append('faceVerification', applicationFiles.faceVerification);
 
       const res = await fetch(`${API_BASE}/auth/seller/apply`, {
         method: 'POST',
@@ -168,10 +181,11 @@ export default function BecomeSellerPage() {
             </section>
 
             <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="text-xl font-bold">Apply to Become a Seller</h2>
-              <p className="mt-1 text-sm text-slate-500">Required: real name, ID, bank details, phone number, personal photo, face verification.</p>
+              <h2 className="text-xl font-bold">{statusData?.role === 'seller' ? 'Update Seller Profile' : 'Apply to Become a Seller'}</h2>
+              <p className="mt-1 text-sm text-slate-500">Required: store name, real name, ID, bank details, phone number, personal photo, face verification.</p>
 
               <form onSubmit={submitSellerApplication} className="mt-4 grid gap-3 md:grid-cols-2">
+                <Input label="Store Name" value={applicationForm.storeName} onChange={(value) => setApplicationForm((prev) => ({ ...prev, storeName: value }))} required />
                 <Input label="Real Name" value={applicationForm.realName} onChange={(value) => setApplicationForm((prev) => ({ ...prev, realName: value }))} required />
 
                 <label className="block">
@@ -198,17 +212,17 @@ export default function BecomeSellerPage() {
                   required
                 />
 
-                <FileInput label="National ID / Driving License / Passport File" onChange={(file) => setApplicationFiles((prev) => ({ ...prev, idDocument: file }))} required />
-                <FileInput label="Personal Photo" onChange={(file) => setApplicationFiles((prev) => ({ ...prev, photo: file }))} required accept="image/*" />
-                <FileInput label="Face Verification Photo" onChange={(file) => setApplicationFiles((prev) => ({ ...prev, faceVerification: file }))} required accept="image/*" />
+                <FileInput label="National ID / Driving License / Passport File" onChange={(file) => setApplicationFiles((prev) => ({ ...prev, idDocument: file }))} required={statusData?.role !== 'seller'} />
+                <FileInput label="Personal Photo" onChange={(file) => setApplicationFiles((prev) => ({ ...prev, photo: file }))} required={statusData?.role !== 'seller'} accept="image/*" />
+                <FileInput label="Face Verification Photo" onChange={(file) => setApplicationFiles((prev) => ({ ...prev, faceVerification: file }))} required={statusData?.role !== 'seller'} accept="image/*" />
 
                 <div className="md:col-span-2">
                   <button
                     type="submit"
-                    disabled={submittingApplication || applicationStatus === 'pending'}
+                    disabled={submittingApplication || (applicationStatus === 'pending' && statusData?.role !== 'seller')}
                     className="rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-70"
                   >
-                    {submittingApplication ? 'Submitting...' : applicationStatus === 'pending' ? 'Application Pending Review' : 'Submit Seller Application'}
+                    {submittingApplication ? 'Submitting...' : (applicationStatus === 'pending' && statusData?.role !== 'seller') ? 'Application Pending Review' : statusData?.role === 'seller' ? 'Update Profile' : 'Submit Seller Application'}
                   </button>
                 </div>
               </form>

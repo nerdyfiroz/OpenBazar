@@ -388,6 +388,7 @@ router.get('/seller-status', authenticate, async (req, res) => {
 });
 
 router.post('/seller/apply', authenticate, uploadSellerVerification, [
+  body('storeName').notEmpty().withMessage('Store name is required'),
   body('realName').notEmpty().withMessage('Real name is required'),
   body('idType').isIn(['national-id', 'driving-license', 'passport']).withMessage('Valid ID type is required'),
   body('idNumber').notEmpty().withMessage('ID number is required'),
@@ -406,28 +407,35 @@ router.post('/seller/apply', authenticate, uploadSellerVerification, [
     const photo = req.files?.photo?.[0];
     const faceVerification = req.files?.faceVerification?.[0];
 
-    if (!idDocument || !photo || !faceVerification) {
+    // Allow existing sellers to update documents and details
+    const isExistingSeller = user.role === 'seller';
+    const isUpdatingDocs = !idDocument && !photo && !faceVerification;
+
+    // If they aren't already an approved seller, they MUST upload documents
+    if (!isExistingSeller && (!idDocument || !photo || !faceVerification)) {
       return res.status(400).json({ message: 'ID document, photo, and face verification photo are required' });
     }
 
     user.sellerApplication = {
-      status: 'pending',
+      ...user.sellerApplication,
+      status: isExistingSeller ? 'approved' : 'pending',
+      storeName: req.body.storeName,
       realName: req.body.realName,
       idType: req.body.idType,
       idNumber: req.body.idNumber,
       bankDetails: req.body.bankDetails,
       phoneNumber: req.body.phoneNumber,
-      photoUrl: `/uploads/seller-verification/${photo.filename}`,
-      faceVerificationUrl: `/uploads/seller-verification/${faceVerification.filename}`,
-      idDocumentUrl: `/uploads/seller-verification/${idDocument.filename}`,
+      photoUrl: photo ? `/uploads/seller-verification/${photo.filename}` : user.sellerApplication.photoUrl,
+      faceVerificationUrl: faceVerification ? `/uploads/seller-verification/${faceVerification.filename}` : user.sellerApplication.faceVerificationUrl,
+      idDocumentUrl: idDocument ? `/uploads/seller-verification/${idDocument.filename}` : user.sellerApplication.idDocumentUrl,
       submittedAt: new Date(),
-      reviewedAt: null,
-      reviewNote: ''
+      reviewedAt: isExistingSeller ? user.sellerApplication.reviewedAt : null,
+      reviewNote: isExistingSeller ? user.sellerApplication.reviewNote : ''
     };
     user.isBlocked = false;
     await user.save();
 
-    res.json({ message: 'Seller application submitted successfully', sellerApplication: user.sellerApplication });
+    res.json({ message: isExistingSeller ? 'Seller profile updated successfully' : 'Seller application submitted successfully', sellerApplication: user.sellerApplication });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

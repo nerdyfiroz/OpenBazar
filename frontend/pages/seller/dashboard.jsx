@@ -3,7 +3,10 @@ import MarketplaceLayout from '../../components/MarketplaceLayout';
 import { resolveImageSrc, FALLBACK_IMAGE } from '../../utils/resolveImageSrc';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
-const CATEGORIES = ['Electronics', 'Fashion', 'Beauty', 'Home & Living', 'Sports'];
+const CATEGORIES = [
+  'Electronics', 'Fashion', 'Beauty', 'Home & Living',
+  'Sports', 'Books', 'Toys', 'Grocery', 'Food'
+];
 
 const blankForm = {
   name: '', description: '', category: '', brand: '', price: '',
@@ -24,15 +27,27 @@ const STATUS_COLOR = {
   cancelled: 'bg-red-100 text-red-700'
 };
 
+const blankFlashForm = {
+  productId: '', requestedDiscount: '', requestedPrice: '',
+  proposedStartAt: '', proposedEndAt: '', sellerNote: ''
+};
+
 export default function SellerDashboard() {
   const [token, setToken] = useState(null);
-  const [tab, setTab] = useState('overview'); // overview | products | orders | add
+  const [tab, setTab] = useState('overview'); // overview | products | orders | add | flash
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [orderStats, setOrderStats] = useState({ totalOrders: 0, totalRevenue: 0, totalSold: 0 });
   const [loading, setLoading] = useState(true);
   const [msg, setMsg] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // ── flash sale state ──
+  const [flashApps, setFlashApps] = useState([]);
+  const [flashForm, setFlashForm] = useState(blankFlashForm);
+  const [flashSubmitting, setFlashSubmitting] = useState(false);
+  const [flashMsg, setFlashMsg] = useState('');
+  const setFF = (key, val) => setFlashForm((p) => ({ ...p, [key]: val }));
 
   // ── product form state ──
   const [form, setForm] = useState(blankForm);
@@ -71,12 +86,20 @@ export default function SellerDashboard() {
     } catch { setOrders([]); }
   };
 
+  const loadFlashApps = async (tk) => {
+    try {
+      const res = await fetch(`${API_BASE}/flash-sale/mine`, { headers: { Authorization: `Bearer ${tk}` } });
+      const data = await res.json();
+      setFlashApps(Array.isArray(data.applications) ? data.applications : []);
+    } catch { setFlashApps([]); }
+  };
+
   useEffect(() => {
     const tk = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     setToken(tk);
     if (tk) {
       setLoading(true);
-      Promise.all([loadProducts(tk), loadOrders(tk)]).finally(() => setLoading(false));
+      Promise.all([loadProducts(tk), loadOrders(tk), loadFlashApps(tk)]).finally(() => setLoading(false));
     } else {
       setLoading(false);
     }
@@ -149,12 +172,57 @@ export default function SellerDashboard() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // ── flash sale submit ─────────────────────────────────────────────────────
+  const submitFlashApp = async (e) => {
+    e.preventDefault();
+    if (!token) return setFlashMsg('Please login first.');
+    setFlashSubmitting(true);
+    setFlashMsg('');
+    try {
+      const res = await fetch(`${API_BASE}/flash-sale/apply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          productId: flashForm.productId,
+          requestedDiscount: Number(flashForm.requestedDiscount),
+          requestedPrice: Number(flashForm.requestedPrice),
+          proposedStartAt: flashForm.proposedStartAt,
+          proposedEndAt: flashForm.proposedEndAt,
+          sellerNote: flashForm.sellerNote
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      setFlashMsg('✅ ' + (data.message || 'Application submitted!'));
+      setFlashForm(blankFlashForm);
+      await loadFlashApps(token);
+    } catch (err) {
+      setFlashMsg('❌ ' + (err.message || 'Submission failed'));
+    } finally {
+      setFlashSubmitting(false);
+    }
+  };
+
+  const withdrawFlashApp = async (id) => {
+    if (!confirm('Withdraw this application?')) return;
+    try {
+      const res = await fetch(`${API_BASE}/flash-sale/${id}`, { method: 'DELETE', headers: authHeader });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message);
+      setFlashMsg('Application withdrawn.');
+      await loadFlashApps(token);
+    } catch (err) {
+      setFlashMsg(err.message || 'Failed to withdraw.');
+    }
+  };
+
   // ── nav tabs ──────────────────────────────────────────────────────────────
   const tabs = [
     { key: 'overview', label: '📊 Overview' },
     { key: 'products', label: '📦 My Products' },
     { key: 'orders', label: '🛒 Orders' },
-    { key: 'add', label: editingId ? '✏️ Edit Product' : '➕ Add Product' }
+    { key: 'add', label: editingId ? '✏️ Edit Product' : '➕ Add Product' },
+    { key: 'flash', label: '⚡ Flash Sale' }
   ];
 
   return (
@@ -359,6 +427,162 @@ export default function SellerDashboard() {
                 )}
               </div>
             </form>
+          </div>
+        )}
+
+        {/* ── FLASH SALE ────────────────────────────────────────────────── */}
+        {tab === 'flash' && (
+          <div className="space-y-6">
+            {/* Apply form */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-amber-400 text-xl shadow-sm">⚡</div>
+                <div>
+                  <h2 className="text-xl font-bold">Apply for Flash Sale</h2>
+                  <p className="text-xs text-slate-500">Submit your product for a time-limited flash deal. Admin will review & activate it.</p>
+                </div>
+              </div>
+
+              {flashMsg && (
+                <div className={`mb-4 rounded-xl px-4 py-3 text-sm ${
+                  flashMsg.startsWith('✅') ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-orange-50 text-orange-700 border border-orange-200'
+                }`}>
+                  {flashMsg} <button className="ml-3 opacity-60 hover:opacity-100" onClick={() => setFlashMsg('')}>✕</button>
+                </div>
+              )}
+
+              <form onSubmit={submitFlashApp} className="grid gap-4 md:grid-cols-2">
+                {/* Product picker */}
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Select Product *</label>
+                  <select className="input" value={flashForm.productId} onChange={(e) => setFF('productId', e.target.value)} required>
+                    <option value="">-- Choose an approved product --</option>
+                    {products.filter(p => p.isApproved && p.saleType !== 'preorder').map(p => (
+                      <option key={p._id} value={p._id}>
+                        {p.name} — ৳{Number(p.price).toFixed(0)} ({p.category})
+                      </option>
+                    ))}
+                  </select>
+                  {products.filter(p => p.isApproved && p.saleType !== 'preorder').length === 0 && (
+                    <p className="mt-1 text-xs text-amber-600">⚠ You need at least one approved non-preorder product to apply.</p>
+                  )}
+                </div>
+
+                {/* Discount % */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Discount % *</label>
+                  <input className="input" type="number" min="1" max="90" placeholder="e.g. 30"
+                    value={flashForm.requestedDiscount}
+                    onChange={(e) => {
+                      const disc = Number(e.target.value);
+                      setFF('requestedDiscount', e.target.value);
+                      // Auto-fill flash price
+                      const sel = products.find(p => p._id === flashForm.productId);
+                      if (sel && disc > 0) setFF('requestedPrice', (sel.price * (1 - disc / 100)).toFixed(0));
+                    }} required />
+                </div>
+
+                {/* Flash price */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Flash Sale Price (৳) *</label>
+                  <input className="input" type="number" min="1" placeholder="Auto-fills from discount"
+                    value={flashForm.requestedPrice}
+                    onChange={(e) => setFF('requestedPrice', e.target.value)} required />
+                  {flashForm.productId && flashForm.requestedPrice && (() => {
+                    const sel = products.find(p => p._id === flashForm.productId);
+                    if (!sel) return null;
+                    const saving = sel.price - Number(flashForm.requestedPrice);
+                    return saving > 0
+                      ? <p className="mt-1 text-xs text-green-600">Buyer saves ৳{saving.toFixed(0)} ({((saving / sel.price) * 100).toFixed(0)}% off)</p>
+                      : <p className="mt-1 text-xs text-red-500">Price must be less than ৳{sel.price}</p>;
+                  })()}
+                </div>
+
+                {/* Start date */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Sale Starts *</label>
+                  <input className="input" type="datetime-local" value={flashForm.proposedStartAt}
+                    onChange={(e) => setFF('proposedStartAt', e.target.value)} required />
+                </div>
+
+                {/* End date */}
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Sale Ends *</label>
+                  <input className="input" type="datetime-local" value={flashForm.proposedEndAt}
+                    onChange={(e) => setFF('proposedEndAt', e.target.value)} required />
+                </div>
+
+                {/* Note to admin */}
+                <div className="md:col-span-2">
+                  <label className="mb-1 block text-sm font-medium text-slate-700">Note to Admin (optional)</label>
+                  <textarea className="input min-h-[80px]" placeholder="Tell the admin why this product is great for a flash deal..."
+                    value={flashForm.sellerNote} onChange={(e) => setFF('sellerNote', e.target.value)} />
+                </div>
+
+                <div className="md:col-span-2">
+                  <button type="submit" disabled={flashSubmitting}
+                    className="rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-2.5 text-sm font-bold text-white shadow hover:from-orange-600 hover:to-amber-600 disabled:opacity-60">
+                    {flashSubmitting ? 'Submitting...' : '⚡ Submit Flash Sale Application'}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* My applications */}
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-bold">My Applications ({flashApps.length})</h2>
+                <button onClick={() => loadFlashApps(token)} className="rounded-xl border px-3 py-1.5 text-xs font-semibold hover:bg-slate-50">Refresh</button>
+              </div>
+
+              {flashApps.length === 0 ? (
+                <div className="rounded-xl border-2 border-dashed border-slate-200 p-8 text-center">
+                  <p className="text-3xl">⚡</p>
+                  <p className="mt-2 text-sm text-slate-500">No applications yet. Submit your first flash sale request above!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {flashApps.map((app) => {
+                    const statusStyle = {
+                      pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
+                      approved: 'bg-green-100 text-green-700 border-green-200',
+                      rejected: 'bg-red-100 text-red-700 border-red-200'
+                    }[app.status] || 'bg-slate-100 text-slate-600 border-slate-200';
+                    const statusIcon = { pending: '⏳', approved: '✅', rejected: '❌' }[app.status] || '?';
+                    return (
+                      <div key={app._id} className={`rounded-xl border p-4 ${statusStyle}`}>
+                        <div className="flex flex-wrap items-start justify-between gap-2">
+                          <div>
+                            <p className="font-semibold text-slate-800">{app.product?.name || 'Product'}</p>
+                            <p className="mt-0.5 text-xs text-slate-500">{app.product?.category}</p>
+                          </div>
+                          <span className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-bold ${statusStyle}`}>
+                            {statusIcon} {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                          </span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-700 sm:grid-cols-4">
+                          <span><strong>Discount:</strong> {app.requestedDiscount}% off</span>
+                          <span><strong>Flash Price:</strong> ৳{Number(app.requestedPrice).toFixed(0)}</span>
+                          <span><strong>Start:</strong> {new Date(app.proposedStartAt).toLocaleDateString()}</span>
+                          <span><strong>End:</strong> {new Date(app.proposedEndAt).toLocaleDateString()}</span>
+                        </div>
+                        {app.sellerNote && <p className="mt-2 text-xs text-slate-600"><strong>Your note:</strong> {app.sellerNote}</p>}
+                        {app.adminNote && <p className="mt-1 text-xs"><strong>Admin note:</strong> {app.adminNote}</p>}
+                        {app.status === 'pending' && (
+                          <button onClick={() => withdrawFlashApp(app._id)}
+                            className="mt-3 rounded-lg bg-white/70 px-3 py-1 text-xs font-semibold text-slate-600 hover:bg-white border border-slate-300">
+                            Withdraw
+                          </button>
+                        )}
+                        {app.status === 'approved' && (
+                          <p className="mt-2 text-xs font-semibold text-green-700">🎉 Your product will appear on flash sale during the approved window!</p>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

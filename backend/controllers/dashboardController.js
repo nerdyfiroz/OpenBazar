@@ -4,6 +4,7 @@ const Order = require('../models/Order');
 const Product = require('../models/Product');
 const User = require('../models/User');
 const VisitorStat = require('../models/VisitorStat');
+const SystemSetting = require('../models/SystemSetting');
 
 exports.userDashboard = async (req, res) => {
   try {
@@ -109,11 +110,18 @@ exports.flashSaleStatus = async (req, res) => {
       .select('name price discountPrice salePercent saleStartAt saleEndAt images')
       .sort({ saleEndAt: 1, createdAt: -1 });
 
-    const nextEndsAt = activeSaleProducts.reduce((soonest, product) => {
-      if (!product.saleEndAt) return soonest;
-      if (!soonest) return product.saleEndAt;
-      return product.saleEndAt < soonest ? product.saleEndAt : soonest;
-    }, null);
+    let nextEndsAt = null;
+    const setting = await SystemSetting.findOne({ key: 'globalFlashSaleEndAt' });
+    
+    if (setting && setting.valueString) {
+      nextEndsAt = new Date(setting.valueString);
+    } else {
+      nextEndsAt = activeSaleProducts.reduce((soonest, product) => {
+        if (!product.saleEndAt) return soonest;
+        if (!soonest) return product.saleEndAt;
+        return product.saleEndAt < soonest ? product.saleEndAt : soonest;
+      }, null);
+    }
 
     const status = activeSaleProducts.length ? 'active' : 'inactive';
 
@@ -139,6 +147,20 @@ exports.trackVisitor = async (req, res) => {
     );
 
     res.json({ message: 'Visitor tracked' });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+exports.updateFlashSaleTimer = async (req, res) => {
+  try {
+    const { endsAt } = req.body;
+    await SystemSetting.findOneAndUpdate(
+      { key: 'globalFlashSaleEndAt' },
+      { valueString: endsAt ? new Date(endsAt).toISOString() : '', updatedAt: new Date() },
+      { upsert: true }
+    );
+    res.json({ message: 'Flash sale timer updated' });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }

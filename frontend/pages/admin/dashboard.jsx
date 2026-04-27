@@ -13,6 +13,9 @@ export default function AdminDashboard() {
   const [badgeRequests, setBadgeRequests] = useState([]);
   const [verificationFee, setVerificationFee] = useState(0);
   const [flashSale, setFlashSale] = useState(null);
+  const [flashSaleTimer, setFlashSaleTimer] = useState('');
+  const [flashSaleApps, setFlashSaleApps] = useState([]);
+  const [flashAppFilter, setFlashAppFilter] = useState('pending');
   const [coupons, setCoupons] = useState([]);
   const [adminForm, setAdminForm] = useState({
     name: '',
@@ -99,7 +102,7 @@ export default function AdminDashboard() {
         }
       };
 
-      const [dashRes, productRes, orderRes, userRes, sellerAppRes, badgeReqRes, feeRes, flashSaleRes, couponRes] = await Promise.all([
+      const [dashRes, productRes, orderRes, userRes, sellerAppRes, badgeReqRes, feeRes, flashSaleRes, couponRes, flashAppsRes] = await Promise.all([
         fetchJson(`${API_BASE}/dashboard/admin`, { headers: { Authorization: `Bearer ${token}` } }),
         fetchJson(`${API_BASE}/products/admin/all`, { headers: { Authorization: `Bearer ${token}` } }),
         fetchJson(`${API_BASE}/orders/admin/all`, { headers: { Authorization: `Bearer ${token}` } }),
@@ -108,7 +111,8 @@ export default function AdminDashboard() {
         fetchJson(`${API_BASE}/auth/admin/seller-verification-requests`, { headers: { Authorization: `Bearer ${token}` } }),
         fetchJson(`${API_BASE}/auth/admin/seller-verification-fee`, { headers: { Authorization: `Bearer ${token}` } }),
         fetchJson(`${API_BASE}/dashboard/flash-sale`),
-        fetchJson(`${API_BASE}/coupons/admin/all`, { headers: { Authorization: `Bearer ${token}` } })
+        fetchJson(`${API_BASE}/coupons/admin/all`, { headers: { Authorization: `Bearer ${token}` } }),
+        fetchJson(`${API_BASE}/flash-sale/admin/all`, { headers: { Authorization: `Bearer ${token}` } })
       ]);
 
       const failedSections = [];
@@ -140,7 +144,11 @@ export default function AdminDashboard() {
       setBadgeRequests(normalizeList(badgeReqRes.data, 'users'));
       setVerificationFee(Number(feeRes.data?.fee || 0));
       setFlashSale(flashSaleRes.data || { status: 'inactive', count: 0, nextEndsAt: null });
+      if (flashSaleRes.data?.nextEndsAt) {
+        setFlashSaleTimer(toDateTimeLocal(flashSaleRes.data.nextEndsAt));
+      }
       setCoupons(Array.isArray(couponRes.data) ? couponRes.data : []);
+      setFlashSaleApps(Array.isArray(flashAppsRes.data?.applications) ? flashAppsRes.data.applications : []);
 
       if (failedSections.length) {
         setMessage(`Some sections failed to load: ${failedSections.join(', ')}.`);
@@ -449,6 +457,43 @@ export default function AdminDashboard() {
       if (editingCouponId === couponId) resetCouponForm();
     } catch (err) {
       setMessage(err.message || 'Failed to delete coupon');
+    }
+  };
+
+  const adminReviewFlashApp = async (appId, action, adminNote = '') => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/flash-sale/admin/${appId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action, adminNote })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Action failed');
+      setMessage(data.message || `Application ${action}d`);
+      // Update local state
+      setFlashSaleApps((prev) => prev.map((a) =>
+        a._id === appId ? { ...a, status: action === 'approve' ? 'approved' : 'rejected', adminNote } : a
+      ));
+    } catch (err) {
+      setMessage(err.message || 'Failed to review application');
+    }
+  };
+
+  const updateGlobalFlashSaleTimer = async () => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/dashboard/admin/flash-sale/timer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ endsAt: flashSaleTimer || null })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update flash sale timer');
+      setMessage('Global flash sale timer updated');
+      fetchData();
+    } catch (err) {
+      setMessage(err.message || 'Failed to update flash sale timer');
     }
   };
 
@@ -852,9 +897,93 @@ export default function AdminDashboard() {
                 <p className="mt-1 font-semibold">{flashSale?.nextEndsAt ? new Date(flashSale.nextEndsAt).toLocaleString() : 'No active sale'}</p>
               </div>
             </div>
+            
+            <div className="mt-4 flex flex-wrap items-center gap-3 rounded border border-slate-200 bg-slate-50 p-3">
+              <div>
+                <p className="text-sm font-semibold">Override Global Flash Sale Countdown</p>
+                <p className="text-xs text-slate-500">Leave empty to auto-calculate from product end times.</p>
+              </div>
+              <input
+                className="rounded border border-slate-300 px-3 py-2 text-sm"
+                type="datetime-local"
+                value={flashSaleTimer}
+                onChange={(e) => setFlashSaleTimer(e.target.value)}
+              />
+              <button
+                className="rounded bg-black px-4 py-2 text-sm text-white"
+                onClick={updateGlobalFlashSaleTimer}
+              >
+                Set Global Timer
+              </button>
+            </div>
+            
             <p className="mt-3 text-sm text-slate-600">
               Use the product table above to turn products into flash-sale items, set discount prices, and choose the sale window.
             </p>
+          </section>
+
+          {/* ─── Flash Sale Applications from Sellers ─── */}
+          <section className="rounded-lg border border-orange-200 bg-white p-4 space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="text-lg font-semibold">⚡ Flash Sale Applications</h2>
+                <p className="text-xs text-slate-500">Review seller requests to put their products on flash sale.</p>
+              </div>
+              <div className="flex gap-2">
+                {['all', 'pending', 'approved', 'rejected'].map((f) => (
+                  <button key={f} onClick={() => setFlashAppFilter(f)}
+                    className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${
+                      flashAppFilter === f ? 'bg-orange-500 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    }`}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {(() => {
+              const filtered = flashSaleApps.filter(a => flashAppFilter === 'all' || a.status === flashAppFilter);
+              if (!filtered.length) return <p className="text-sm text-slate-400">No applications found.</p>;
+              return (
+                <div className="space-y-3">
+                  {filtered.map((app) => {
+                    const statusColors = {
+                      pending: 'bg-yellow-50 border-yellow-200',
+                      approved: 'bg-green-50 border-green-200',
+                      rejected: 'bg-red-50 border-red-200'
+                    }[app.status] || 'bg-slate-50 border-slate-200';
+                    return (
+                      <div key={app._id} className={`rounded-xl border p-4 ${statusColors}`}>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold">{app.product?.name || 'Unknown Product'}</p>
+                            <p className="text-xs text-slate-500">
+                              Seller: <strong>{app.seller?.name}</strong> · {app.seller?.email}
+                            </p>
+                            <p className="text-xs text-slate-500">{app.product?.category}</p>
+                          </div>
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${
+                            app.status === 'pending' ? 'bg-yellow-200 text-yellow-800' :
+                            app.status === 'approved' ? 'bg-green-200 text-green-800' : 'bg-red-200 text-red-800'
+                          }`}>{app.status}</span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1 text-xs sm:grid-cols-4">
+                          <span><strong>Discount:</strong> {app.requestedDiscount}%</span>
+                          <span><strong>Flash Price:</strong> ৳{Number(app.requestedPrice).toFixed(0)}</span>
+                          <span><strong>Start:</strong> {new Date(app.proposedStartAt).toLocaleString()}</span>
+                          <span><strong>End:</strong> {new Date(app.proposedEndAt).toLocaleString()}</span>
+                        </div>
+                        {app.sellerNote && <p className="mt-2 text-xs text-slate-600"><strong>Seller note:</strong> {app.sellerNote}</p>}
+                        {app.adminNote && <p className="mt-1 text-xs text-slate-600"><strong>Admin note:</strong> {app.adminNote}</p>}
+                        {app.status === 'pending' && (
+                          <AdminFlashReview appId={app._id} onReview={adminReviewFlashApp} />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </section>
 
           <section className="rounded-lg border border-gray-200 bg-white p-4 overflow-x-auto">
@@ -1179,6 +1308,45 @@ function AdminOrderRow({ order: o, token, apiBase, onUpdate, onMsg }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function AdminFlashReview({ appId, onReview }) {
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const handle = async (action) => {
+    setSaving(true);
+    await onReview(appId, action, note);
+    setSaving(false);
+  };
+
+  return (
+    <div className="mt-3 flex flex-wrap items-end gap-2">
+      <textarea
+        className="flex-1 min-w-[200px] rounded-lg border border-slate-300 px-3 py-2 text-xs"
+        rows={2}
+        placeholder="Optional note to seller..."
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={() => handle('approve')}
+          disabled={saving}
+          className="rounded-lg bg-green-600 px-4 py-2 text-xs font-bold text-white hover:bg-green-700 disabled:opacity-60"
+        >
+          ✅ Approve
+        </button>
+        <button
+          onClick={() => handle('reject')}
+          disabled={saving}
+          className="rounded-lg bg-red-500 px-4 py-2 text-xs font-bold text-white hover:bg-red-600 disabled:opacity-60"
+        >
+          ❌ Reject
+        </button>
+      </div>
     </div>
   );
 }

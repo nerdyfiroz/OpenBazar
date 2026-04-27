@@ -138,6 +138,9 @@ app.use('/api/payments', require('./routes/payment'));
 // Dashboard routes
 app.use('/api/dashboard', require('./routes/dashboard'));
 
+// Flash Sale Application routes
+app.use('/api/flash-sale', require('./routes/flashSale'));
+
 // Invoice route
 app.use('/api/invoice', require('./routes/invoice'));
 

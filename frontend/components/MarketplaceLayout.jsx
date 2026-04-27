@@ -50,7 +50,7 @@ export default function MarketplaceLayout({ children }) {
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 md:px-6">
           {/* Logo */}
           <Link href="/" className="flex-shrink-0">
-            <img src="/api/logo" alt="OpenBazar" className="h-12 w-auto object-contain md:h-16" />
+            <img src="/api/logo" alt="OpenBazar" className="h-16 w-auto object-contain md:h-24 lg:h-28" />
           </Link>
 
           {/* Search — hidden on very small mobile, shown from sm */}

@@ -51,29 +51,38 @@ export default function SellerProfile() {
         {/* ── Seller Header ── */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-center gap-5">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-orange-400 to-amber-500 text-3xl font-black text-white shadow-lg">
-              {(seller.name || 'S')[0].toUpperCase()}
-            </div>
-            <div className="flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-2xl font-black">{seller.name}</h1>
-                {seller.isSellerVerifiedBadge && (
-                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">✓ Verified</span>
+              <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-slate-100 shadow-lg">
+                {seller.photoUrl ? (
+                  <img src={`${API_BASE.replace(/\/api$/, '')}${seller.photoUrl}`} alt={seller.storeName} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-400 to-amber-500 text-3xl font-black text-white">
+                    {(seller.storeName || seller.name || 'S')[0].toUpperCase()}
+                  </div>
                 )}
               </div>
-              <p className="mt-1 text-sm text-slate-500">Seller on OpenBazar</p>
-              <div className="mt-3 flex flex-wrap gap-4 text-sm">
-                <div className="text-center">
-                  <p className="text-lg font-black text-orange-500">{products.length}</p>
-                  <p className="text-xs text-slate-500">Products</p>
+              <div className="flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h1 className="text-2xl font-black">{seller.storeName || seller.name}</h1>
+                  {seller.isSellerVerifiedBadge && (
+                    <span className="flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-bold text-blue-700">
+                      <span className="text-sm">✓</span> Golden Badge
+                    </span>
+                  )}
                 </div>
-                <div className="text-center">
-                  <p className="text-lg font-black text-orange-500">{totalSold}</p>
-                  <p className="text-xs text-slate-500">Units Sold</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-lg font-black text-orange-500">⭐ {avgRating}</p>
-                  <p className="text-xs text-slate-500">Avg Rating</p>
+                <p className="mt-1 text-sm text-slate-500">Verified Seller on OpenBazar</p>
+                <div className="mt-3 flex flex-wrap gap-4 text-sm">
+                  <div className="text-center">
+                    <p className="text-lg font-black text-orange-500">{products.length}</p>
+                    <p className="text-xs text-slate-500">Products</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-black text-orange-500">{totalSold}</p>
+                    <p className="text-xs text-slate-500">Units Sold</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-black text-orange-500">⭐ {avgRating}</p>
+                    <p className="text-xs text-slate-500">Avg Rating</p>
+                  </div>
                 </div>
               </div>
             </div>
@@ -82,7 +91,7 @@ export default function SellerProfile() {
 
         {/* ── Products ── */}
         <div>
-          <h2 className="mb-4 text-xl font-bold">Products by {seller.name} ({products.length})</h2>
+          <h2 className="mb-4 text-xl font-bold">Products by {seller.storeName || seller.name} ({products.length})</h2>
           {!products.length ? (
             <div className="rounded-2xl border border-slate-200 bg-white py-12 text-center text-slate-400">
               <p className="text-3xl">📦</p>

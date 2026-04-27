@@ -236,6 +236,7 @@ exports.getAllProducts = async (req, res) => {
 
     const [products, total] = await Promise.all([
       Product.find(filter)
+        .populate('seller', 'name isSellerVerifiedBadge sellerApplication.storeName sellerApplication.photoUrl')
         .sort(sortOption)
         .skip((parsedPage - 1) * parsedLimit)
         .limit(parsedLimit),
@@ -274,7 +275,8 @@ exports.getSuggestions = async (req, res) => {
 
 exports.getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id);
+    const product = await Product.findById(req.params.id)
+      .populate('seller', 'name isSellerVerifiedBadge sellerApplication.storeName sellerApplication.photoUrl');
     if (!product || !product.isApproved) return res.status(404).json({ message: 'Not found' });
     res.json(product);
   } catch (err) {
@@ -345,7 +347,8 @@ exports.updateProduct = async (req, res) => {
 
 exports.adminGetAllProducts = async (req, res) => {
   try {
-    const products = await Product.find().populate('seller', 'name email');
+    const products = await Product.find()
+      .populate('seller', 'name isSellerVerifiedBadge sellerApplication.storeName sellerApplication.photoUrl');
     res.json(products);
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
@@ -418,7 +421,7 @@ exports.adminUpdateProduct = async (req, res) => {
       req.params.id,
       updates,
       { new: true, runValidators: true }
-    ).populate('seller', 'name email');
+    ).populate('seller', 'name isSellerVerifiedBadge sellerApplication.storeName sellerApplication.photoUrl');
 
     res.json({ message: 'Product updated by admin', product });
   } catch (err) {

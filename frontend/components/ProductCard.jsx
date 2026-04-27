@@ -35,6 +35,15 @@ export default function ProductCard({ product }) {
           {hasDiscount && <p className="text-xs text-slate-500 line-through">৳{Number(product.price).toFixed(0)}</p>}
         </div>
 
+        {product.seller && (
+          <div className="flex items-center gap-1.5 text-xs text-slate-500">
+            <span className="font-semibold text-slate-700">{product.seller.sellerApplication?.storeName || product.seller.name}</span>
+            {product.seller.isSellerVerifiedBadge && (
+              <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white" title="Verified Seller">✓</span>
+            )}
+          </div>
+        )}
+
         <p className="text-xs text-amber-500">★ {Number(product.rating || 4.2).toFixed(1)} · {product.numReviews || 0} reviews</p>
 
         <div className="flex gap-2">

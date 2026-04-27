@@ -156,9 +156,9 @@ export default function ProductDetails() {
               {product.seller && (
                 <>
                   <span className="text-slate-300">|</span>
-                  <Link href={`/seller/${product.seller._id}`} className="flex items-center gap-1 font-semibold text-slate-700 hover:text-orange-500">
-                    {product.seller.sellerApplication?.storeName || product.seller.name}
-                    {(product.seller.isSellerVerifiedBadge || product.seller.isVerified) && (
+                  <Link href={`/seller/${product.seller?._id || product.seller}`} className="flex items-center gap-1 font-semibold text-slate-700 hover:text-orange-500">
+                    {product.seller?.sellerApplication?.storeName || product.seller?.name || 'Seller'}
+                    {(product.seller?.isSellerVerifiedBadge || product.seller?.isVerified) && (
                       <VerifiedBadge className="h-4 w-4" />
                     )}
                   </Link>

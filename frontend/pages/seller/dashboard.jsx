@@ -5,7 +5,7 @@ import { resolveImageSrc, FALLBACK_IMAGE } from '../../utils/resolveImageSrc';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 const CATEGORIES = [
   'Electronics', 'Fashion', 'Beauty', 'Home & Living',
-  'Sports', 'Books', 'Toys', 'Grocery', 'Food'
+  'Sports', 'Toys', 'Grocery', 'Food', 'Mango'
 ];
 
 const blankForm = {

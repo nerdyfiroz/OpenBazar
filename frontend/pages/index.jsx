@@ -12,7 +12,6 @@ const SHOP_CATEGORIES = [
   { label: 'Beauty', emoji: '💄', color: 'from-purple-500 to-fuchsia-500' },
   { label: 'Home & Living', emoji: '🏠', color: 'from-green-500 to-emerald-500' },
   { label: 'Sports', emoji: '⚽', color: 'from-sky-500 to-blue-500' },
-  { label: 'Books', emoji: '📚', color: 'from-teal-500 to-cyan-500' },
   { label: 'Toys', emoji: '🧸', color: 'from-yellow-400 to-amber-400' },
   { label: 'Grocery', emoji: '🛒', color: 'from-lime-500 to-green-500' },
   { label: 'Food', emoji: '🍔', color: 'from-rose-400 to-pink-500' },

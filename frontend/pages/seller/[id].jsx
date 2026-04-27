@@ -85,7 +85,6 @@ export default function SellerProfile() {
                   </div>
                 </div>
               </div>
-            </div>
           </div>
         </div>
 

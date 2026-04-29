@@ -3,7 +3,7 @@
 const Product = require('../models/Product');
 const { processUploads } = require('../middleware/productUpload');
 
-const SELLER_ALLOWED_CATEGORIES = ['Electronics', 'Fashion', 'Beauty', 'Home & Living', 'Sports', 'Mango'];
+const SELLER_ALLOWED_CATEGORIES = ['Electronics', 'Fashion', 'Beauty', 'Home & Living', 'Sports', 'Toys', 'Grocery', 'Food', 'Mango'];
 
 const normalizeSellerCategory = (rawCategory) => {
   const normalized = String(rawCategory || '').trim().toLowerCase();

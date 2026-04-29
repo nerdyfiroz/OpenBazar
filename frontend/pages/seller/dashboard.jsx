@@ -445,21 +445,10 @@ export default function SellerDashboard() {
                           <span className="w-12 text-sm font-bold text-slate-600">{w}</span>
                           <input
                             type="number"
-                            className="input text-sm"
-                            placeholder="Price (৳)"
+                            className="input text-sm bg-slate-50 cursor-not-allowed"
+                            placeholder="Auto-calculated"
                             value={existing?.price || ''}
-                            onChange={(e) => {
-                              const p = e.target.value;
-                              let next = [...form.weightPrices];
-                              const idx = next.findIndex(wp => wp.weight === w);
-                              if (p === '') {
-                                if (idx > -1) next.splice(idx, 1);
-                              } else {
-                                if (idx > -1) next[idx].price = Number(p);
-                                else next.push({ weight: w, price: Number(p) });
-                              }
-                              setF('weightPrices', next);
-                            }}
+                            readOnly
                           />
                         </div>
                       );
@@ -469,7 +458,25 @@ export default function SellerDashboard() {
                 </div>
               )}
 
-              <Field label="Base Price (৳)" type="number" min="0" value={form.price} onChange={(v) => setF('price', v)} required />
+              <Field 
+                label={form.category === 'Mango' ? "Base Price (Price per Kg) (৳)" : "Base Price (৳)"} 
+                type="number" 
+                min="0" 
+                value={form.price} 
+                onChange={(v) => {
+                  setF('price', v);
+                  if (form.category === 'Mango' && v) {
+                    const base = Number(v);
+                    const weights = [5, 10, 15, 20, 30, 40];
+                    const nextWeights = weights.map(w => ({
+                      weight: `${w}kg`,
+                      price: base * w
+                    }));
+                    setF('weightPrices', nextWeights);
+                  }
+                }} 
+                required 
+              />
 
               <div className="md:col-span-2">
                 <label className="mb-1 block text-sm font-medium text-slate-700">Product Type</label>

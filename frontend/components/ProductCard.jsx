@@ -1,10 +1,13 @@
 import Link from 'next/link';
+import { useState } from 'react';
 import { useStore } from './StoreProvider';
 import { resolveImageSrc, FALLBACK_IMAGE } from '../utils/resolveImageSrc';
 import VerifiedBadge from './VerifiedBadge';
+import MangoSelectionModal from './MangoSelectionModal';
 
 export default function ProductCard({ product }) {
   const { addToCart, toggleWishlist, wishlist } = useStore();
+  const [showMangoModal, setShowMangoModal] = useState(false);
   const isWished = wishlist.some((item) => item._id === product._id);
   const hasDiscount = Number(product.discountPrice) > 0 && product.discountPrice < product.price;
   const imageSrc = resolveImageSrc(product.images?.[0] || product.photos?.[0]);
@@ -52,11 +55,18 @@ export default function ProductCard({ product }) {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => addToCart(product, 1)}
+            onClick={() => product.category === 'Mango' ? setShowMangoModal(true) : addToCart(product, 1)}
             className="flex-1 rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-600"
           >
             Add to Cart
           </button>
+          {showMangoModal && (
+            <MangoSelectionModal 
+              product={product} 
+              onClose={() => setShowMangoModal(false)} 
+              onAdd={(p, q) => addToCart(p, q)} 
+            />
+          )}
           <button
             type="button"
             onClick={() => toggleWishlist(product)}

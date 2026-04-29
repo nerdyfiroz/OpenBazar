@@ -25,7 +25,10 @@ export default function Cart() {
   const baseDeliveryCharge = regularItemsCount > 0 ? (deliveryArea === 'dhaka' ? 70 : 120) : 0;
   const deliveryDiscountRate = regularItemsCount >= 4 ? 1 : regularItemsCount >= 3 ? 0.7 : 0;
   
-  const mangoDeliveryCharge = totalMangoKg * 10;
+  const mangoDeliveryCharge = cart.filter(item => item.category === 'Mango').reduce((sum, item) => {
+    const weight = parseInt(item.selectedWeight) || 0;
+    return sum + (weight * 10 * item.quantity);
+  }, 0);
   const regularDeliveryCharge = Number((baseDeliveryCharge * (1 - deliveryDiscountRate)).toFixed(2));
   const deliveryCharge = regularDeliveryCharge + mangoDeliveryCharge;
 
@@ -47,6 +50,7 @@ export default function Cart() {
                   <img src={resolveImageSrc(item.images?.[0] || item.photos?.[0])} alt={item.name} className="h-16 w-16 rounded-lg object-cover" onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }} />
                   <div className="min-w-[200px] flex-1">
                     <p className="font-semibold">{item.name}</p>
+                    {item.selectedWeight && <p className="text-xs font-bold text-orange-600">Weight: {item.selectedWeight}</p>}
                     <p className="text-sm text-orange-500">৳{Number(item.unitPrice).toFixed(0)}</p>
                   </div>
                   <input
@@ -79,7 +83,7 @@ export default function Cart() {
                     ? '3 regular items: 70% regular delivery discount applied.'
                     : 'Buy at least 3 regular items to get a delivery discount.'
               ) : 'No regular items.'}
-              {totalMangoKg > 0 && ` Mango delivery charge: ৳10/kg (${totalMangoKg} kg = ৳${mangoDeliveryCharge}).`}
+              {totalMangoKg > 0 && ` Mango delivery charge: ৳10/kg (Total weight-based charge: ৳${mangoDeliveryCharge}).`}
             </p>
           </div>
           {mangoError && (

@@ -8,12 +8,8 @@ const CATEGORIES = [
   'Sports', 'Toys', 'Grocery', 'Food', 'Mango'
 ];
 
-const blankForm = {
-  name: '', description: '', category: '', brand: '', price: '',
-  saleType: 'regular', salePercent: '', discountPrice: '',
-  preorderStartAt: '', preorderEndAt: '', saleStartAt: '', saleEndAt: '',
-  colors: '', sizes: '', accessories: '', specifications: '',
-  stock: '100' // Default 100 units; set to 9999 for unlimited
+  stock: '100', // Default 100 units; set to 9999 for unlimited
+  weightPrices: []
 };
 
 // ─── Status badge colours ────────────────────────────────────────────────────
@@ -191,7 +187,8 @@ export default function SellerDashboard() {
       saleEndAt: p.saleEndAt ? p.saleEndAt.slice(0, 16) : '',
       colors: (p.colors || []).join(', '), sizes: (p.sizes || []).join(', '),
       accessories: (p.accessories || []).join(', '), specifications: p.specifications || '',
-      stock: String(p.stock ?? 100)
+      stock: String(p.stock ?? 100),
+      weightPrices: p.weightPrices || []
     });
     setEditingId(p._id);
     setPhotos([]); setVideo(null);
@@ -426,11 +423,44 @@ export default function SellerDashboard() {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Category</label>
-                <select className="input" value={form.category} onChange={(e) => setF('category', e.target.value)} required>
-                  <option value="">Select category</option>
                   {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
+
+              {form.category === 'Mango' && (
+                <div className="md:col-span-2 rounded-xl bg-orange-50 p-4 border border-orange-100">
+                  <p className="mb-3 text-sm font-bold text-orange-700">🥭 Mango Weight-wise Pricing</p>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                    {['5kg', '10kg', '15kg', '20kg', '30kg', '40kg'].map((w) => {
+                      const existing = form.weightPrices.find(wp => wp.weight === w);
+                      return (
+                        <div key={w} className="flex items-center gap-2">
+                          <span className="w-12 text-sm font-bold text-slate-600">{w}</span>
+                          <input
+                            type="number"
+                            className="input text-sm"
+                            placeholder="Price (৳)"
+                            value={existing?.price || ''}
+                            onChange={(e) => {
+                              const p = e.target.value;
+                              let next = [...form.weightPrices];
+                              const idx = next.findIndex(wp => wp.weight === w);
+                              if (p === '') {
+                                if (idx > -1) next.splice(idx, 1);
+                              } else {
+                                if (idx > -1) next[idx].price = Number(p);
+                                else next.push({ weight: w, price: Number(p) });
+                              }
+                              setF('weightPrices', next);
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <p className="mt-2 text-[10px] text-orange-500 italic">* Buyers will select one of these weights on the product page.</p>
+                </div>
+              )}
 
               <Field label="Base Price (৳)" type="number" min="0" value={form.price} onChange={(v) => setF('price', v)} required />
 

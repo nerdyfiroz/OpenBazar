@@ -107,7 +107,7 @@ export function StoreProvider({ children }) {
         ));
       }
 
-      const effectivePrice = product.discountPrice ?? product.price;
+      const effectivePrice = product.unitPrice ?? (product.discountPrice ?? product.price);
       return [...prev, { ...product, unitPrice: effectivePrice, quantity }];
     });
   };

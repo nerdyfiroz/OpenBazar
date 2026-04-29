@@ -62,6 +62,10 @@ const ProductSchema = new mongoose.Schema({
     size: { type: Number, default: 0 }
   },
   images: [String],
+  weightPrices: [{
+    weight: { type: String, enum: ['5kg', '10kg', '15kg', '20kg', '30kg', '40kg'] },
+    price: { type: Number, min: 0 }
+  }],
   soldCount: { type: Number, default: 0, min: 0 },
   stock: { type: Number, default: 9999, min: 0 }, // 9999 = effectively unlimited for legacy products
   reviews: [ReviewSchema],

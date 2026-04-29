@@ -68,7 +68,8 @@ exports.createProduct = async (req, res) => {
       preorderStartAt,
       preorderEndAt,
       saleStartAt,
-      saleEndAt
+      saleEndAt,
+      weightPrices
     } = req.body;
 
     const normalizedSalePercent = salePercent !== undefined && salePercent !== null && salePercent !== ''
@@ -127,6 +128,7 @@ exports.createProduct = async (req, res) => {
       preorderEndAt: preorderEndAt || null,
       saleStartAt: saleStartAt || null,
       saleEndAt: saleEndAt || null,
+      weightPrices: Array.isArray(weightPrices) ? weightPrices : [],
       photos: finalPhotos,
       images: finalPhotos,
       seller: req.user._id,

@@ -39,6 +39,7 @@ export default function ProductDetails() {
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedSize, setSelectedSize] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [selectedWeight, setSelectedWeight] = useState('');
   const [addedMsg, setAddedMsg] = useState('');
 
   const inWishlist = useMemo(() => wishlist.some((w) => w._id === id), [wishlist, id]);
@@ -93,7 +94,22 @@ export default function ProductDetails() {
 
   const handleAddToCart = (buyNow = false) => {
     if (!product) return;
-    addToCart({ ...product, selectedColor, selectedSize }, quantity);
+    if (product.category === 'Mango' && !selectedWeight) {
+      setAddedMsg('⚠️ Please select a weight');
+      setTimeout(() => setAddedMsg(''), 2000);
+      return;
+    }
+    const weightPrice = product.category === 'Mango' 
+      ? product.weightPrices.find(wp => wp.weight === selectedWeight)?.price 
+      : null;
+    
+    addToCart({ 
+      ...product, 
+      selectedColor, 
+      selectedSize, 
+      selectedWeight,
+      unitPrice: weightPrice ?? (product.discountPrice ?? product.price)
+    }, quantity);
     setAddedMsg('✓ Added to cart!');
     setTimeout(() => setAddedMsg(''), 2000);
     if (buyNow) router.push('/checkout');
@@ -168,8 +184,13 @@ export default function ProductDetails() {
 
             {/* Price */}
             <div className="mt-4 flex items-end gap-3">
-              <p className="text-4xl font-black text-orange-500">৳{effectivePrice.toFixed(0)}</p>
-              {product.discountPrice && (
+              <p className="text-4xl font-black text-orange-500">
+                ৳{product.category === 'Mango' && selectedWeight 
+                  ? Number(product.weightPrices.find(wp => wp.weight === selectedWeight)?.price || 0).toFixed(0)
+                  : effectivePrice.toFixed(0)}
+                {product.category === 'Mango' && !selectedWeight && <span className="text-sm font-normal text-slate-400 ml-2">(Select weight)</span>}
+              </p>
+              {product.discountPrice && product.category !== 'Mango' && (
                 <>
                   <p className="text-lg text-slate-400 line-through">৳{Number(product.price).toFixed(0)}</p>
                   <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">
@@ -193,6 +214,20 @@ export default function ProductDetails() {
             <p className="mt-4 text-sm leading-relaxed text-slate-600">{product.description}</p>
 
             {/* Color selector */}
+            {product.category === 'Mango' && product.weightPrices?.length > 0 && (
+              <div className="mt-4">
+                <p className="mb-2 text-sm font-semibold text-orange-700 font-bold uppercase tracking-wide">Select Weight</p>
+                <div className="flex flex-wrap gap-2">
+                  {product.weightPrices.map((wp) => (
+                    <button key={wp.weight} onClick={() => setSelectedWeight(wp.weight)}
+                      className={`rounded-xl border-2 px-4 py-2 text-sm font-black transition ${selectedWeight === wp.weight ? 'border-orange-500 bg-orange-500 text-white shadow-lg' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
+                      {wp.weight} - ৳{Number(wp.price).toFixed(0)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {colors.length > 0 && (
               <div className="mt-4">
                 <p className="mb-2 text-sm font-semibold">Color: <span className="text-orange-500">{selectedColor || 'Select'}</span></p>

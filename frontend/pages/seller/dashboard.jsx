@@ -428,6 +428,8 @@ export default function SellerDashboard() {
 
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">Category</label>
+                <select className="input" value={form.category} onChange={(e) => setF('category', e.target.value)} required>
+                  <option value="">Select category</option>
                   {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>

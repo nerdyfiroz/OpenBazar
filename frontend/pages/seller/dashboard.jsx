@@ -8,6 +8,11 @@ const CATEGORIES = [
   'Sports', 'Toys', 'Grocery', 'Food', 'Mango'
 ];
 
+const blankForm = {
+  name: '', description: '', category: '', brand: '', price: '',
+  saleType: 'regular', salePercent: '', discountPrice: '',
+  preorderStartAt: '', preorderEndAt: '', saleStartAt: '', saleEndAt: '',
+  colors: '', sizes: '', accessories: '', specifications: '',
   stock: '100', // Default 100 units; set to 9999 for unlimited
   weightPrices: []
 };

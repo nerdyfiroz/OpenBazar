@@ -103,11 +103,12 @@ export default function ProductDetails() {
       ? product.weightPrices.find(wp => wp.weight === selectedWeight)
       : null;
     
+    const weightPrice = selectedWeightData?.price || null;
+
     // Calculate effective unit price for cart
     let unitPrice = weightPrice ?? (product.discountPrice ?? product.price);
     
     // If it's a mango and we have a discount on the base product, apply it to the weight price too?
-    // Actually, usually manual pricing per weight is final, but if the user wants "dashboard options with discount":
     if (product.category === 'Mango' && weightPrice && product.salePercent > 0) {
       unitPrice = Number((weightPrice * (1 - product.salePercent / 100)).toFixed(2));
     }

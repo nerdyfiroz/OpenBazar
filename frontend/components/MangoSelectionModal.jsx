@@ -54,10 +54,14 @@ export default function MangoSelectionModal({ product, onClose, onAdd }) {
               return (
                 <button
                   key={wp.weight}
-                  onClick={() => setSelectedWeight(wp.weight)}
+                  type="button"
+                  onClick={() => {
+                    setSelectedWeight(wp.weight);
+                    setMsg('');
+                  }}
                   className={`relative flex flex-col items-center rounded-2xl border-2 p-3 transition ${
                     selectedWeight === wp.weight 
-                      ? 'border-orange-500 bg-orange-50 shadow-md' 
+                      ? 'border-orange-500 bg-orange-50 shadow-md scale-105' 
                       : 'border-slate-100 bg-slate-50 hover:border-orange-200'
                   }`}
                 >

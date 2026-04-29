@@ -26,14 +26,16 @@ export default function Cart() {
   const deliveryDiscountRate = regularItemsCount >= 4 ? 1 : regularItemsCount >= 3 ? 0.7 : 0;
   
   const mangoDeliveryCharge = cart.filter(item => item.category === 'Mango').reduce((sum, item) => {
-    const weight = parseInt(item.selectedWeight) || 0;
-    return sum + (weight * 10 * item.quantity);
+    // Extract number from "5kg", "10kg" etc
+    const weightMatch = item.selectedWeight?.match(/(\d+)/);
+    const weightValue = weightMatch ? parseInt(weightMatch[1]) : 0;
+    return sum + (weightValue * 10 * item.quantity);
   }, 0);
   const regularDeliveryCharge = Number((baseDeliveryCharge * (1 - deliveryDiscountRate)).toFixed(2));
   const deliveryCharge = regularDeliveryCharge + mangoDeliveryCharge;
 
   const total = subtotal - couponDiscount + deliveryCharge;
-  const mangoError = totalMangoKg > 0 && (totalMangoKg < 10 || totalMangoKg > 40) ? `Mango orders must be between 10 kg and 40 kg. Currently: ${totalMangoKg} kg.` : null;
+  const mangoError = totalMangoKg > 0 && (totalMangoKg < 5 || totalMangoKg > 40) ? `Mango orders must be between 5 kg and 40 kg. Currently: ${totalMangoKg} kg.` : null;
 
   return (
     <MarketplaceLayout>

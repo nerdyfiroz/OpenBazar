@@ -99,16 +99,25 @@ export default function ProductDetails() {
       setTimeout(() => setAddedMsg(''), 2000);
       return;
     }
-    const weightPrice = product.category === 'Mango' 
-      ? product.weightPrices.find(wp => wp.weight === selectedWeight)?.price 
+    const selectedWeightData = product.category === 'Mango' 
+      ? product.weightPrices.find(wp => wp.weight === selectedWeight)
       : null;
+    
+    // Calculate effective unit price for cart
+    let unitPrice = weightPrice ?? (product.discountPrice ?? product.price);
+    
+    // If it's a mango and we have a discount on the base product, apply it to the weight price too?
+    // Actually, usually manual pricing per weight is final, but if the user wants "dashboard options with discount":
+    if (product.category === 'Mango' && weightPrice && product.salePercent > 0) {
+      unitPrice = Number((weightPrice * (1 - product.salePercent / 100)).toFixed(2));
+    }
     
     addToCart({ 
       ...product, 
       selectedColor, 
       selectedSize, 
       selectedWeight,
-      unitPrice: weightPrice ?? (product.discountPrice ?? product.price)
+      unitPrice
     }, quantity);
     setAddedMsg('✓ Added to cart!');
     setTimeout(() => setAddedMsg(''), 2000);
@@ -184,19 +193,25 @@ export default function ProductDetails() {
 
             {/* Price */}
             <div className="mt-4 flex items-end gap-3">
-              <p className="text-4xl font-black text-orange-500">
-                ৳{product.category === 'Mango' && selectedWeight 
-                  ? Number(product.weightPrices.find(wp => wp.weight === selectedWeight)?.price || 0).toFixed(0)
-                  : effectivePrice.toFixed(0)}
-                {product.category === 'Mango' && !selectedWeight && <span className="text-sm font-normal text-slate-400 ml-2">(Select weight)</span>}
-              </p>
-              {product.discountPrice && product.category !== 'Mango' && (
-                <>
-                  <p className="text-lg text-slate-400 line-through">৳{Number(product.price).toFixed(0)}</p>
-                  <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600">
-                    {product.salePercent ? `${product.salePercent}% OFF` : 'SALE'}
-                  </span>
-                </>
+              <div className="flex flex-col">
+                <p className="text-4xl font-black text-orange-500">
+                  ৳{product.category === 'Mango' && selectedWeight 
+                    ? (product.salePercent > 0 
+                        ? (Number(product.weightPrices.find(wp => wp.weight === selectedWeight)?.price || 0) * (1 - product.salePercent / 100)).toFixed(0)
+                        : Number(product.weightPrices.find(wp => wp.weight === selectedWeight)?.price || 0).toFixed(0))
+                    : effectivePrice.toFixed(0)}
+                  {product.category === 'Mango' && !selectedWeight && <span className="text-sm font-normal text-slate-400 ml-2">(Select weight)</span>}
+                </p>
+                {product.category === 'Mango' && selectedWeight && product.salePercent > 0 && (
+                  <p className="text-sm text-slate-400 line-through">
+                    ৳{Number(product.weightPrices.find(wp => wp.weight === selectedWeight)?.price || 0).toFixed(0)}
+                  </p>
+                )}
+              </div>
+              {product.salePercent > 0 && (
+                <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600 mb-1">
+                  {product.salePercent}% OFF
+                </span>
               )}
             </div>
 

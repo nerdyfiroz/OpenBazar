@@ -10,6 +10,14 @@ export function StoreProvider({ children }) {
   const [wishlist, setWishlist] = useState([]);
   const [coupon, setCoupon] = useState(null);
 
+  const buildCartKey = (item) => {
+    const id = item?._id || '';
+    const w = item?.selectedWeight || '';
+    const c = item?.selectedColor || '';
+    const s = item?.selectedSize || '';
+    return [id, w, c, s].map((x) => String(x || '').trim()).join('|');
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -21,7 +29,16 @@ export function StoreProvider({ children }) {
 
     if (savedUser) setUser(JSON.parse(savedUser));
     if (savedToken) setToken(savedToken);
-    if (savedCart) setCart(JSON.parse(savedCart));
+    if (savedCart) {
+      const parsed = JSON.parse(savedCart);
+      const migrated = Array.isArray(parsed)
+        ? parsed.map((item) => ({
+            ...item,
+            cartKey: item.cartKey || buildCartKey(item)
+          }))
+        : [];
+      setCart(migrated);
+    }
     if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
     if (savedCoupon) setCoupon(JSON.parse(savedCoupon));
   }, []);
@@ -98,33 +115,46 @@ export function StoreProvider({ children }) {
 
   const addToCart = (product, quantity = 1) => {
     setCart((prev) => {
-      const existing = prev.find((item) => item._id === product._id);
+      const nextItem = {
+        ...product,
+        cartKey: product.cartKey || buildCartKey(product)
+      };
+
+      const existing = prev.find((item) => (item.cartKey || buildCartKey(item)) === nextItem.cartKey);
       if (existing) {
         return prev.map((item) => (
-          item._id === product._id
-            ? { ...item, quantity: item.quantity + quantity }
+          (item.cartKey || buildCartKey(item)) === nextItem.cartKey
+            ? { ...item, cartKey: nextItem.cartKey, quantity: Number(item.quantity || 0) + Number(quantity || 0) }
             : item
         ));
       }
 
-      const effectivePrice = product.unitPrice ?? (product.discountPrice ?? product.price);
-      return [...prev, { ...product, unitPrice: effectivePrice, quantity }];
+      const effectivePrice = nextItem.unitPrice ?? (nextItem.discountPrice ?? nextItem.price);
+      return [...prev, { ...nextItem, unitPrice: effectivePrice, quantity }];
     });
   };
 
-  const updateQuantity = (productId, quantity) => {
+  const updateQuantity = (idOrKey, quantity) => {
     if (quantity <= 0) {
-      setCart((prev) => prev.filter((item) => item._id !== productId));
+      setCart((prev) => prev.filter((item) => {
+        const key = item.cartKey || buildCartKey(item);
+        return key !== idOrKey && item._id !== idOrKey;
+      }));
       return;
     }
 
     setCart((prev) => prev.map((item) => (
-      item._id === productId ? { ...item, quantity } : item
+      (item.cartKey || buildCartKey(item)) === idOrKey || item._id === idOrKey
+        ? { ...item, cartKey: item.cartKey || buildCartKey(item), quantity }
+        : item
     )));
   };
 
-  const removeFromCart = (productId) => {
-    setCart((prev) => prev.filter((item) => item._id !== productId));
+  const removeFromCart = (idOrKey) => {
+    setCart((prev) => prev.filter((item) => {
+      const key = item.cartKey || buildCartKey(item);
+      return key !== idOrKey && item._id !== idOrKey;
+    }));
   };
 
   const toggleWishlist = (product) => {

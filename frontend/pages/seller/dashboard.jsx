@@ -147,7 +147,15 @@ export default function SellerDashboard() {
         salePercent: form.salePercent === '' ? 0 : Number(form.salePercent),
         discountPrice: form.discountPrice === '' ? '' : Number(form.discountPrice),
         colors: form.colors, sizes: form.sizes, accessories: form.accessories
-      }).forEach(([k, v]) => { if (v !== '' && v !== null && v !== undefined) fd.append(k, v); });
+      }).forEach(([k, v]) => {
+        if (v === '' || v === null || v === undefined) return;
+        if (k === 'weightPrices') {
+          // FormData can't send arrays/objects directly; send as JSON.
+          fd.append('weightPrices', JSON.stringify(Array.isArray(v) ? v : []));
+          return;
+        }
+        fd.append(k, v);
+      });
 
       photos.slice(0, 3).forEach((f) => fd.append('photos', f));
       if (video) fd.append('video', video);

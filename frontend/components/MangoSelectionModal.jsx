@@ -1,33 +1,85 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/router';
 import { resolveImageSrc, FALLBACK_IMAGE } from '../utils/resolveImageSrc';
 
 export default function MangoSelectionModal({ product, onClose, onAdd }) {
+  const router = useRouter();
   const [selectedWeight, setSelectedWeight] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [msg, setMsg] = useState('');
 
-  const handleAdd = () => {
-    if (!selectedWeight) return setMsg('⚠️ Please select a weight');
-    
-    const weightData = product.weightPrices.find(wp => wp.weight === selectedWeight);
-    const basePrice = weightData?.price || 0;
-    const salePercent = Number(product.salePercent || 0);
-    const unitPrice = salePercent > 0 
-      ? Number((basePrice * (1 - salePercent / 100)).toFixed(2))
-      : basePrice;
+  // Prevent background scroll when modal is open
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
+  const weightPrices = useMemo(() => {
+    const raw = Array.isArray(product?.weightPrices) ? product.weightPrices : [];
+    if (raw.length) return raw;
+
+    // Fallback for legacy mango products where weightPrices wasn't stored correctly.
+    const basePerKg = Number(product?.price || 0);
+    if (!Number.isFinite(basePerKg) || basePerKg <= 0) return [];
+    return [5, 10, 15, 20, 30, 40].map((kg) => ({
+      weight: `${kg}kg`,
+      price: basePerKg * kg
+    }));
+  }, [product]);
+
+  const salePercent = Number(product?.salePercent || 0);
+
+  const selectedWeightData = useMemo(() => {
+    if (!selectedWeight) return null;
+    return weightPrices.find((wp) => wp.weight === selectedWeight) || null;
+  }, [selectedWeight, weightPrices]);
+
+  const unitPrice = useMemo(() => {
+    const basePrice = Number(selectedWeightData?.price || 0);
+    if (!Number.isFinite(basePrice) || basePrice <= 0) return 0;
+    if (salePercent > 0) {
+      return Number((basePrice * (1 - salePercent / 100)).toFixed(2));
+    }
+    return basePrice;
+  }, [salePercent, selectedWeightData]);
+
+  const canSubmit = Boolean(selectedWeight) && quantity >= 1 && unitPrice > 0;
+
+  const submit = async (mode = 'cart') => {
+    if (!selectedWeight) {
+      setMsg('Please select a weight.');
+      return;
+    }
+    if (!weightPrices.length) {
+      setMsg('Weight options are not available for this product.');
+      return;
+    }
 
     onAdd({
       ...product,
       selectedWeight,
       unitPrice
     }, quantity);
-    
+
     onClose();
+    if (mode === 'checkout') {
+      await router.push('/checkout');
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl">
+    <div
+      className="fixed inset-0 z-[200] flex items-start justify-center overflow-y-auto bg-black/60 p-4 sm:items-center"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-lg overflow-hidden rounded-3xl bg-white shadow-2xl max-h-[calc(100vh-2rem)] flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="relative h-48 bg-slate-100">
           <img 
             src={resolveImageSrc(product.images?.[0] || product.photos?.[0])} 
@@ -38,7 +90,7 @@ export default function MangoSelectionModal({ product, onClose, onAdd }) {
           <button onClick={onClose} className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 font-bold text-slate-800 shadow hover:bg-white">✕</button>
         </div>
 
-        <div className="p-6">
+        <div className="flex-1 p-6 overflow-y-auto">
           <div className="mb-4">
             <p className="text-xs font-bold uppercase tracking-widest text-orange-500">Mango Options</p>
             <h2 className="text-2xl font-black text-slate-800">{product.name}</h2>
@@ -46,8 +98,7 @@ export default function MangoSelectionModal({ product, onClose, onAdd }) {
           </div>
 
           <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {product.weightPrices?.map((wp) => {
-              const salePercent = Number(product.salePercent || 0);
+            {weightPrices.length ? weightPrices.map((wp) => {
               const originalPrice = Number(wp.price || 0);
               const discountedPrice = salePercent > 0 ? (originalPrice * (1 - salePercent / 100)) : originalPrice;
               
@@ -79,7 +130,11 @@ export default function MangoSelectionModal({ product, onClose, onAdd }) {
                   )}
                 </button>
               );
-            })}
+            }) : (
+              <div className="col-span-full rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                Weight options are not available for this product yet.
+              </div>
+            )}
           </div>
 
           <div className="mb-6 flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 p-3">
@@ -93,12 +148,32 @@ export default function MangoSelectionModal({ product, onClose, onAdd }) {
 
           {msg && <p className="mb-4 text-center text-sm font-bold text-rose-500">{msg}</p>}
 
-          <button
-            onClick={handleAdd}
-            className="w-full rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 py-4 text-sm font-black text-white shadow-lg hover:from-orange-600 hover:to-amber-600"
-          >
-            Add to Shopping Cart
-          </button>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button
+              type="button"
+              disabled={!canSubmit}
+              onClick={() => submit('cart')}
+              className={`w-full rounded-2xl border py-4 text-sm font-black shadow-sm transition ${
+                canSubmit
+                  ? 'border-orange-200 bg-white text-orange-600 hover:bg-orange-50'
+                  : 'cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400'
+              }`}
+            >
+              Add to Cart
+            </button>
+            <button
+              type="button"
+              disabled={!canSubmit}
+              onClick={() => submit('checkout')}
+              className={`w-full rounded-2xl py-4 text-sm font-black text-white shadow-lg transition ${
+                canSubmit
+                  ? 'bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600'
+                  : 'cursor-not-allowed bg-slate-300'
+              }`}
+            >
+              Checkout
+            </button>
+          </div>
         </div>
       </div>
     </div>

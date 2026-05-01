@@ -85,6 +85,12 @@ exports.placeOrder = async (req, res) => {
     let subtotal = 0;
     let totalMangoKg = 0;
     let regularItemsCount = 0;
+    let totalItems = 0;
+
+    const parseWeightKg = (weightLabel) => {
+      const match = String(weightLabel || '').match(/(\d+)/);
+      return match ? Number(match[1]) : 0;
+    };
 
     const orderProducts = await Promise.all(products.map(async (item) => {
       const product = await Product.findById(item.product);
@@ -94,25 +100,58 @@ exports.placeOrder = async (req, res) => {
       }
       
       const qty = Number(item.quantity || 1);
+      totalItems += qty;
+
+      let unitPrice = product.discountPrice ?? product.price;
+      let selectedWeight = '';
+
       if (product.category === 'Mango') {
-        totalMangoKg += qty;
+        selectedWeight = String(item.selectedWeight || '').trim();
+        if (!selectedWeight) {
+          throw new Error(`Please select a mango weight option for "${product.name}"`);
+        }
+
+        const weightKg = parseWeightKg(selectedWeight);
+        if (!Number.isFinite(weightKg) || weightKg <= 0) {
+          throw new Error(`Invalid mango weight option: ${selectedWeight}`);
+        }
+
+        const wp = Array.isArray(product.weightPrices)
+          ? product.weightPrices.find((x) => String(x.weight) === selectedWeight)
+          : null;
+
+        const basePerKg = Number(product.price || 0);
+        const weightPrice = wp?.price !== undefined && wp?.price !== null
+          ? Number(wp.price)
+          : (Number.isFinite(basePerKg) && basePerKg > 0 ? basePerKg * weightKg : NaN);
+
+        if (!Number.isFinite(weightPrice) || weightPrice <= 0) {
+          throw new Error(`Pricing not available for ${selectedWeight} of "${product.name}"`);
+        }
+
+        const salePercent = Number(product.salePercent || 0);
+        unitPrice = salePercent > 0
+          ? Number((weightPrice * (1 - salePercent / 100)).toFixed(2))
+          : weightPrice;
+
+        totalMangoKg += (weightKg * qty);
       } else {
         regularItemsCount += qty;
       }
 
-      const effectivePrice = product.discountPrice ?? product.price;
-      subtotal += effectivePrice * qty;
+      subtotal += unitPrice * qty;
       return {
         product: product._id,
         name: product.name,
         quantity: qty,
         seller: product.seller,
-        price: effectivePrice
+        price: unitPrice,
+        selectedWeight: selectedWeight || undefined
       };
     }));
 
-    if (totalMangoKg > 0 && (totalMangoKg < 10 || totalMangoKg > 40)) {
-      return res.status(400).json({ message: 'Mango orders must be between 10 kg and 40 kg per order.' });
+    if (totalMangoKg > 0 && (totalMangoKg < 5 || totalMangoKg > 40)) {
+      return res.status(400).json({ message: 'Mango orders must be between 5 kg and 40 kg per order.' });
     }
 
     const baseDeliveryCharge = regularItemsCount > 0 ? calculateDeliveryCharge({

@@ -31,7 +31,15 @@ export default function Checkout() {
   const districtOptions = useMemo(() => getDistrictOptions(form.division), [form.division]);
   const upazilaOptions = useMemo(() => getUpazilaOptions(form.district), [form.district]);
   const unionOptions = useMemo(() => getUnionOptions(form.upazila), [form.upazila]);
-  const totalMangoKg = useMemo(() => cart.filter(item => item.category === 'Mango').reduce((sum, item) => sum + Number(item.quantity || 0), 0), [cart]);
+  const totalMangoKg = useMemo(() => (
+    cart
+      .filter((item) => item.category === 'Mango')
+      .reduce((sum, item) => {
+        const weightMatch = item.selectedWeight?.match(/(\d+)/);
+        const weightKg = weightMatch ? Number(weightMatch[1]) : 0;
+        return sum + (weightKg * Number(item.quantity || 0));
+      }, 0)
+  ), [cart]);
   const regularItemsCount = useMemo(() => cart.filter(item => item.category !== 'Mango').reduce((sum, item) => sum + Number(item.quantity || 0), 0), [cart]);
   const totalItems = useMemo(() => cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0), [cart]);
 
@@ -71,8 +79,8 @@ export default function Checkout() {
       return;
     }
     
-    if (totalMangoKg > 0 && (totalMangoKg < 10 || totalMangoKg > 40)) {
-      setMessage(`Mango orders must be between 10 kg and 40 kg. Currently: ${totalMangoKg} kg.`);
+    if (totalMangoKg > 0 && (totalMangoKg < 5 || totalMangoKg > 40)) {
+      setMessage(`Mango orders must be between 5 kg and 40 kg. Currently: ${totalMangoKg} kg.`);
       return;
     }
 
@@ -92,7 +100,12 @@ export default function Checkout() {
       }
 
       const payload = {
-        products: cart.map((item) => ({ product: item._id, quantity: item.quantity })),
+        products: cart.map((item) => ({
+          product: item._id,
+          quantity: item.quantity,
+          selectedWeight: item.selectedWeight || undefined,
+          unitPrice: item.unitPrice || undefined
+        })),
         paymentMethod: form.paymentMethod === 'COD' ? 'COD' : form.mobileBankingProvider,
         paymentInfo: {
           transactionId: form.transactionId || undefined,

@@ -18,6 +18,40 @@ const normalizeList = (value) => {
   return [];
 };
 
+const tryParseJson = (value) => {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (!trimmed) return value;
+  const looksLikeJson =
+    (trimmed.startsWith('[') && trimmed.endsWith(']')) ||
+    (trimmed.startsWith('{') && trimmed.endsWith('}'));
+  if (!looksLikeJson) return value;
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return value;
+  }
+};
+
+const normalizeWeightPrices = (value) => {
+  const parsed = tryParseJson(value);
+
+  // Accept either an array of {weight, price} or an object map { '5kg': 500, ... }
+  let arr = parsed;
+  if (arr && typeof arr === 'object' && !Array.isArray(arr)) {
+    arr = Object.entries(arr).map(([weight, price]) => ({ weight, price }));
+  }
+
+  if (!Array.isArray(arr)) return [];
+
+  return arr
+    .map((wp) => ({
+      weight: typeof wp?.weight === 'string' ? wp.weight.trim() : '',
+      price: wp?.price === '' || wp?.price === null || wp?.price === undefined ? NaN : Number(wp.price)
+    }))
+    .filter((wp) => Boolean(wp.weight) && Number.isFinite(wp.price) && wp.price >= 0);
+};
+
 const getUploadedMedia = (req) => {
   const uploadedPhotos = (req.files?.photos || []).slice(0, 3);
   const uploadedVideo = (req.files?.video || [])[0] || null;
@@ -128,7 +162,7 @@ exports.createProduct = async (req, res) => {
       preorderEndAt: preorderEndAt || null,
       saleStartAt: saleStartAt || null,
       saleEndAt: saleEndAt || null,
-      weightPrices: Array.isArray(weightPrices) ? weightPrices : [],
+      weightPrices: normalizeWeightPrices(weightPrices),
       photos: finalPhotos,
       images: finalPhotos,
       seller: req.user._id,
@@ -290,6 +324,23 @@ exports.updateProduct = async (req, res) => {
   try {
     const product = await Product.findOne({ _id: req.params.id, seller: req.user._id });
     if (!product) return res.status(404).json({ message: 'Not found' });
+
+    // Normalize common fields coming from multipart/form-data
+    if (req.body.price !== undefined && req.body.price !== null && req.body.price !== '') {
+      req.body.price = Number(req.body.price);
+    }
+    if (req.body.salePercent !== undefined && req.body.salePercent !== null && req.body.salePercent !== '') {
+      req.body.salePercent = Number(req.body.salePercent);
+    }
+    if (req.body.discountPrice !== undefined) {
+      // allow clearing discount price by sending empty string
+      if (req.body.discountPrice === '' || req.body.discountPrice === null) req.body.discountPrice = null;
+      else req.body.discountPrice = Number(req.body.discountPrice);
+    }
+    if (req.body.colors !== undefined) req.body.colors = normalizeList(req.body.colors);
+    if (req.body.sizes !== undefined) req.body.sizes = normalizeList(req.body.sizes);
+    if (req.body.accessories !== undefined) req.body.accessories = normalizeList(req.body.accessories);
+    if (req.body.weightPrices !== undefined) req.body.weightPrices = normalizeWeightPrices(req.body.weightPrices);
 
     if (req.body.category !== undefined) {
       const normalizedCategory = normalizeSellerCategory(req.body.category);

@@ -99,8 +99,8 @@ export default function ProductDetails() {
       setTimeout(() => setAddedMsg(''), 2000);
       return;
     }
-    const selectedWeightData = product.category === 'Mango' 
-      ? product.weightPrices.find(wp => wp.weight === selectedWeight)
+    const selectedWeightData = product.category === 'Mango'
+      ? mangoWeightPrices.find((wp) => wp.weight === selectedWeight)
       : null;
     
     const weightPrice = selectedWeightData?.price || null;
@@ -129,6 +129,20 @@ export default function ProductDetails() {
   const stockLeft = Number(product?.stock ?? 9999);
   const isOutOfStock = stockLeft <= 0;
   const maxQty = Math.min(stockLeft, 10);
+
+  const mangoWeightPrices = useMemo(() => {
+    if (!product || product.category !== 'Mango') return [];
+    const raw = Array.isArray(product.weightPrices) ? product.weightPrices : [];
+    if (raw.length) return raw;
+
+    // Legacy fallback: treat product.price as "price per kg"
+    const basePerKg = Number(product.price || 0);
+    if (!Number.isFinite(basePerKg) || basePerKg <= 0) return [];
+    return [5, 10, 15, 20, 30, 40].map((kg) => ({
+      weight: `${kg}kg`,
+      price: basePerKg * kg
+    }));
+  }, [product]);
 
   const images = (product?.images?.length ? product.images : product?.photos || []).filter(Boolean);
   const colors = product?.colors?.filter(Boolean) || [];
@@ -198,14 +212,14 @@ export default function ProductDetails() {
                 <p className="text-4xl font-black text-orange-500">
                   ৳{product.category === 'Mango' && selectedWeight 
                     ? (product.salePercent > 0 
-                        ? (Number(product.weightPrices.find(wp => wp.weight === selectedWeight)?.price || 0) * (1 - product.salePercent / 100)).toFixed(0)
-                        : Number(product.weightPrices.find(wp => wp.weight === selectedWeight)?.price || 0).toFixed(0))
+                        ? (Number(mangoWeightPrices.find((wp) => wp.weight === selectedWeight)?.price || 0) * (1 - product.salePercent / 100)).toFixed(0)
+                        : Number(mangoWeightPrices.find((wp) => wp.weight === selectedWeight)?.price || 0).toFixed(0))
                     : effectivePrice.toFixed(0)}
                   {product.category === 'Mango' && !selectedWeight && <span className="text-sm font-normal text-slate-400 ml-2">(Select weight)</span>}
                 </p>
                 {product.category === 'Mango' && selectedWeight && product.salePercent > 0 && (
                   <p className="text-sm text-slate-400 line-through">
-                    ৳{Number(product.weightPrices.find(wp => wp.weight === selectedWeight)?.price || 0).toFixed(0)}
+                    ৳{Number(mangoWeightPrices.find((wp) => wp.weight === selectedWeight)?.price || 0).toFixed(0)}
                   </p>
                 )}
               </div>
@@ -230,11 +244,11 @@ export default function ProductDetails() {
             <p className="mt-4 text-sm leading-relaxed text-slate-600">{product.description}</p>
 
             {/* Color selector */}
-            {product.category === 'Mango' && product.weightPrices?.length > 0 && (
+            {product.category === 'Mango' && mangoWeightPrices?.length > 0 && (
               <div className="mt-4">
                 <p className="mb-2 text-sm font-semibold text-orange-700 font-bold uppercase tracking-wide">Select Weight</p>
                 <div className="flex flex-wrap gap-2">
-                  {product.weightPrices.map((wp) => (
+                  {mangoWeightPrices.map((wp) => (
                     <button key={wp.weight} onClick={() => setSelectedWeight(wp.weight)}
                       className={`rounded-xl border-2 px-4 py-2 text-sm font-black transition ${selectedWeight === wp.weight ? 'border-orange-500 bg-orange-500 text-white shadow-lg' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
                       {wp.weight} - ৳{Number(wp.price).toFixed(0)}

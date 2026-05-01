@@ -18,7 +18,13 @@ export default function Cart() {
 
   const [deliveryArea, setDeliveryArea] = useState('dhaka');
 
-  const totalMangoKg = cart.filter(item => item.category === 'Mango').reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  const totalMangoKg = cart
+    .filter((item) => item.category === 'Mango')
+    .reduce((sum, item) => {
+      const weightMatch = item.selectedWeight?.match(/(\d+)/);
+      const weightKg = weightMatch ? Number(weightMatch[1]) : 0;
+      return sum + (weightKg * Number(item.quantity || 0));
+    }, 0);
   const regularItemsCount = cart.filter(item => item.category !== 'Mango').reduce((sum, item) => sum + Number(item.quantity || 0), 0);
   const totalItems = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
@@ -48,7 +54,7 @@ export default function Cart() {
           ) : (
             <div className="space-y-3">
               {cart.map((item) => (
-                <article key={item._id} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3">
+                <article key={item.cartKey || item._id} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3">
                   <img src={resolveImageSrc(item.images?.[0] || item.photos?.[0])} alt={item.name} className="h-16 w-16 rounded-lg object-cover" onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }} />
                   <div className="min-w-[200px] flex-1">
                     <p className="font-semibold">{item.name}</p>
@@ -59,10 +65,10 @@ export default function Cart() {
                     type="number"
                     min="1"
                     value={item.quantity}
-                    onChange={(e) => updateQuantity(item._id, Number(e.target.value))}
+                    onChange={(e) => updateQuantity(item.cartKey || item._id, Number(e.target.value))}
                     className="input w-20"
                   />
-                  <button type="button" onClick={() => removeFromCart(item._id)} className="text-sm font-semibold text-rose-500">Remove</button>
+                  <button type="button" onClick={() => removeFromCart(item.cartKey || item._id)} className="text-sm font-semibold text-rose-500">Remove</button>
                 </article>
               ))}
             </div>

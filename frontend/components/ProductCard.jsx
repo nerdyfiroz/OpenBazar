@@ -8,12 +8,34 @@ import SmartImage from './SmartImage';
 
 const MangoSelectionModal = dynamic(() => import('./MangoSelectionModal'), { ssr: false });
 
+function firstString(value) {
+  if (!value) return '';
+  if (Array.isArray(value)) {
+    const v = value.find((x) => typeof x === 'string' && x.trim());
+    return v ? v.trim() : '';
+  }
+  if (typeof value === 'string') {
+    // Handle legacy "a.jpg,b.jpg" stored as a string
+    const v = value.split(',').map((x) => x.trim()).find(Boolean);
+    return v || '';
+  }
+  // Some older payloads may use objects like { url: "..." }
+  if (typeof value === 'object' && typeof value.url === 'string') return value.url.trim();
+  return '';
+}
+
 export default function ProductCard({ product }) {
   const { addToCart, toggleWishlist, wishlist } = useStore();
   const [showMangoModal, setShowMangoModal] = useState(false);
   const isWished = wishlist.some((item) => item._id === product._id);
   const hasDiscount = Number(product.discountPrice) > 0 && product.discountPrice < product.price;
-  const imageSrc = resolveImageSrc(product.images?.[0] || product.photos?.[0]);
+  const imageSrc = resolveImageSrc(
+    firstString(product.images) ||
+    firstString(product.photos) ||
+    firstString(product.image) ||
+    firstString(product.photoUrl) ||
+    firstString(product.thumbnail)
+  );
 
   return (
     <article className="group rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">

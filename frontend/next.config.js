@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5001/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
 // Extract just the origin (protocol + host + port) from the API base URL
-let backendOrigin = 'http://localhost:5001';
+let backendOrigin = 'http://localhost:5000';
 try {
   const url = new URL(API_BASE);
   backendOrigin = url.origin;

@@ -8,10 +8,10 @@
  *
  * BACKEND_ORIGIN is derived from NEXT_PUBLIC_API_BASE by stripping "/api".
  * Example:
- *   NEXT_PUBLIC_API_BASE = "http://localhost:5001/api"
- *   BACKEND_ORIGIN       = "http://localhost:5001"
+ *   NEXT_PUBLIC_API_BASE = "http://localhost:5000/api"
+ *   BACKEND_ORIGIN       = "http://localhost:5000"
  *   Input  : "/uploads/products/fan.jpg"
- *   Output : "http://localhost:5001/uploads/products/fan.jpg"
+ *   Output : "http://localhost:5000/uploads/products/fan.jpg"
  */
 export const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1553456558-aff63285bdd1?w=800';
@@ -20,7 +20,7 @@ export const FALLBACK_IMAGE =
 function getBackendOrigin() {
   const base =
     (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_BASE) ||
-    'http://localhost:5001/api';
+    'http://localhost:5000/api';
   // Strip trailing /api or /api/ to get the bare origin
   return base.replace(/\/api\/?$/, '').replace(/\/$/, '');
 }

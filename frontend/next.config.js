@@ -18,6 +18,27 @@ const nextConfig = {
   compress: true,
   images: {
     remotePatterns: [
+      // Allow Cloudinary-hosted images (when backend stores uploads in Cloudinary)
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.cloudinary.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**.cloudinary.com',
+        pathname: '/**',
+      },
       // Allow images from the backend server
       {
         protocol: backendUrl.protocol.replace(':', ''),

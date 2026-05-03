@@ -33,7 +33,6 @@ export default function Login() {
     const text = await res.text();
     return {
       message: text || 'Authentication failed'
-        <SEO title="Login" description="Login or create an OpenBazar account." canonical="/login" noindex />
     };
   };
 
@@ -81,6 +80,7 @@ export default function Login() {
 
   return (
     <MarketplaceLayout>
+      <SEO title="Login" description="Login or create an OpenBazar account." canonical="/login" noindex />
       <main className="mx-auto max-w-md px-4 py-10">
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h1 className="text-2xl font-black">{isLogin ? 'Login to OpenBazar' : 'Create Account'}</h1>

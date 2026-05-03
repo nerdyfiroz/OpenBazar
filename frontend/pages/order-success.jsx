@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import MarketplaceLayout from '../components/MarketplaceLayout';
 import { useStore } from '../components/StoreProvider';
+import SEO from '../components/SEO';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -29,6 +30,7 @@ export default function OrderSuccess() {
 
   return (
     <MarketplaceLayout>
+      <SEO title="Order Success" description="Your order was placed successfully." canonical="/order-success" noindex />
       <main className="mx-auto max-w-2xl px-4 py-16 text-center">
         {/* Animated checkmark */}
         <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-green-100">

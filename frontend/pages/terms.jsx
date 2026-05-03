@@ -1,9 +1,15 @@
 import Link from 'next/link';
 import MarketplaceLayout from '../components/MarketplaceLayout';
+import SEO from '../components/SEO';
 
 export default function Terms() {
   return (
     <MarketplaceLayout>
+      <SEO
+        title="Terms & Conditions"
+        description="Read OpenBazar terms and conditions for buyers and sellers."
+        canonical="/terms"
+      />
       <main className="mx-auto max-w-3xl px-4 py-10">
         <h1 className="text-3xl font-black">Terms &amp; Conditions</h1>
         <p className="mt-2 text-sm text-slate-500">Last updated: April 2026</p>

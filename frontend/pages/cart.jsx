@@ -4,6 +4,7 @@ import MarketplaceLayout from '../components/MarketplaceLayout';
 import { useStore } from '../components/StoreProvider';
 import { resolveImageSrc } from '../utils/resolveImageSrc';
 import SmartImage from '../components/SmartImage';
+import SEO from '../components/SEO';
 
 export default function Cart() {
   const {
@@ -46,6 +47,7 @@ export default function Cart() {
 
   return (
     <MarketplaceLayout>
+      <SEO title="Cart" description="View items in your shopping cart." canonical="/cart" noindex />
       <main className="mx-auto grid max-w-7xl gap-4 px-4 py-6 md:grid-cols-[1fr_320px] md:px-6">
         <section className="rounded-2xl border border-slate-200 bg-white p-4 md:p-6">
           <h1 className="mb-4 text-2xl font-black">Shopping Cart</h1>

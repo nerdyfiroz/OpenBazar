@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import MarketplaceLayout from '../components/MarketplaceLayout';
+import SEO from '../components/SEO';
 
 export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', subject: 'support', message: '' });
@@ -17,6 +18,11 @@ export default function Contact() {
 
   return (
     <MarketplaceLayout>
+      <SEO
+        title="Contact"
+        description="Contact OpenBazar support for order help, seller assistance, partnerships, and general inquiries."
+        canonical="/contact"
+      />
       <div className="mx-auto max-w-5xl px-4 py-12 md:px-6">
         <div className="text-center">
           <h1 className="text-4xl font-black text-slate-800">Contact Us</h1>

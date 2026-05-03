@@ -1,8 +1,14 @@
 import MarketplaceLayout from '../components/MarketplaceLayout';
+import SEO from '../components/SEO';
 
 export default function About() {
   return (
     <MarketplaceLayout>
+      <SEO
+        title="About"
+        description="Learn about OpenBazar — Bangladesh-first marketplace with verified sellers, secure payments, and fast delivery."
+        canonical="/about"
+      />
       <div className="mx-auto max-w-4xl px-4 py-12 md:px-6">
         <div className="text-center">
           <h1 className="text-4xl font-black text-slate-800">About OpenBazar</h1>

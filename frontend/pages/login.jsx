@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/router';
 import MarketplaceLayout from '../components/MarketplaceLayout';
 import { useStore } from '../components/StoreProvider';
+import SEO from '../components/SEO';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -32,6 +33,7 @@ export default function Login() {
     const text = await res.text();
     return {
       message: text || 'Authentication failed'
+        <SEO title="Login" description="Login or create an OpenBazar account." canonical="/login" noindex />
     };
   };
 

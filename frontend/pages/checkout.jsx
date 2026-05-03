@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import MarketplaceLayout from '../components/MarketplaceLayout';
 import { useStore } from '../components/StoreProvider';
 import { BANGLADESH_AREAS, BANGLADESH_DIVISIONS, getDistrictOptions, getUpazilaOptions, getUnionOptions } from '../utils/bdAddressOptions';
+import SEO from '../components/SEO';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -149,6 +150,7 @@ export default function Checkout() {
 
   return (
     <MarketplaceLayout>
+      <SEO title="Checkout" description="Secure checkout on OpenBazar." canonical="/checkout" noindex />
       <main className="mx-auto grid max-w-7xl gap-4 px-4 py-6 md:grid-cols-[1fr_320px] md:px-6">
         <form onSubmit={placeOrder} className="rounded-2xl border border-slate-200 bg-white p-4 md:p-6">
           <h1 className="mb-4 text-2xl font-black">Checkout</h1>

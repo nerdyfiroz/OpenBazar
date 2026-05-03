@@ -5,6 +5,7 @@ import MarketplaceLayout from '../../components/MarketplaceLayout';
 import { useStore } from '../../components/StoreProvider';
 import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import SmartImage from '../../components/SmartImage';
+import SEO from '../../components/SEO';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -73,6 +74,7 @@ export default function UserDashboard() {
 
   return (
     <MarketplaceLayout>
+      <SEO title="My Account" description="Manage your OpenBazar account." canonical="/user/dashboard" noindex />
       <main className="mx-auto max-w-4xl px-4 py-8">
         {/* Header */}
         <div className="mb-6 flex flex-wrap items-center gap-4">

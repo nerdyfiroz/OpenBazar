@@ -4,8 +4,14 @@ import MarketplaceLayout from '../components/MarketplaceLayout';
 import ProductCard from '../components/ProductCard';
 import { resolveImageSrc } from '../utils/resolveImageSrc';
 import SmartImage from '../components/SmartImage';
+import SEO from '../components/SEO';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+
+function getSiteUrl() {
+  const base = process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://open-bazar.me';
+  return base.replace(/\/$/, '');
+}
 
 const SHOP_CATEGORIES = [
   { label: 'Electronics', emoji: '📱', color: 'from-blue-500 to-indigo-500' },
@@ -175,8 +181,42 @@ export default function Home({
   const featured = products.slice(0, 8);
   const trending = products.slice(8, 16);
 
+  const siteUrl = getSiteUrl();
+  const homeJsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: 'OpenBazar',
+      url: siteUrl,
+      logo: `${siteUrl}/api/logo`,
+      email: 'support@open-bazar.me',
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: 'Dhaka',
+        addressCountry: 'BD'
+      }
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: 'OpenBazar',
+      url: siteUrl,
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: `${siteUrl}/category?q={search_term_string}`,
+        'query-input': 'required name=search_term_string'
+      }
+    }
+  ];
+
   return (
     <MarketplaceLayout>
+      <SEO
+        title="Online Marketplace in Bangladesh"
+        description="Shop electronics, fashion, groceries, mangoes and more from verified sellers on OpenBazar. Secure payments and fast delivery across Bangladesh."
+        canonical="/"
+        jsonLd={homeJsonLd}
+      />
       {/* ── Hero Banner Carousel ── */}
       <section className="mx-auto max-w-7xl grid gap-4 px-4 py-6 md:grid-cols-[1fr_280px] md:px-6">
         <HeroBanner />

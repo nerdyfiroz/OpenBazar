@@ -1,6 +1,18 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://open-bazar.me';
 
+const CATEGORIES = [
+  'Electronics',
+  'Fashion',
+  'Beauty',
+  'Home & Living',
+  'Sports',
+  'Toys',
+  'Grocery',
+  'Food',
+  'Mango'
+];
+
 function generateSiteMap(products) {
   return `<?xml version="1.0" encoding="UTF-8"?>
    <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -20,6 +32,11 @@ function generateSiteMap(products) {
        <priority>0.5</priority>
      </url>
      <url>
+       <loc>${FRONTEND_URL}/contact</loc>
+       <changefreq>monthly</changefreq>
+       <priority>0.5</priority>
+     </url>
+     <url>
        <loc>${FRONTEND_URL}/terms</loc>
        <changefreq>monthly</changefreq>
        <priority>0.5</priority>
@@ -29,6 +46,13 @@ function generateSiteMap(products) {
        <changefreq>monthly</changefreq>
        <priority>0.5</priority>
      </url>
+     ${CATEGORIES.map((c) => `
+     <url>
+       <loc>${FRONTEND_URL}/category?category=${encodeURIComponent(c)}</loc>
+       <changefreq>daily</changefreq>
+       <priority>0.7</priority>
+     </url>
+     `).join('')}
      ${products
        .map(({ _id, updatedAt }) => {
          return `
@@ -52,7 +76,8 @@ function SiteMap() {
 export async function getServerSideProps({ res }) {
   let products = [];
   try {
-    const request = await fetch(`${API_BASE}/products?limit=1000`);
+    // If you have >1000 products, consider extending this to paginate.
+    const request = await fetch(`${API_BASE}/products?limit=2000`);
     const data = await request.json();
     products = Array.isArray(data.products) ? data.products : (Array.isArray(data) ? data : []);
   } catch (error) {

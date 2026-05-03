@@ -7,8 +7,14 @@ import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import Link from 'next/link';
 import SmartImage from '../../components/SmartImage';
+import SEO from '../../components/SEO';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+
+function getSiteUrl() {
+  const base = process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://open-bazar.me';
+  return base.replace(/\/$/, '');
+}
 
 function StarRating({ value, onChange }) {
   return (
@@ -23,13 +29,13 @@ function StarRating({ value, onChange }) {
   );
 }
 
-export default function ProductDetails() {
+export default function ProductDetails({ initialProduct = null, initialRelated = [] }) {
   const router = useRouter();
   const { id } = router.query;
   const { addToCart, toggleWishlist, wishlist, token } = useStore();
 
-  const [product, setProduct] = useState(null);
-  const [related, setRelated] = useState([]);
+  const [product, setProduct] = useState(initialProduct);
+  const [related, setRelated] = useState(initialRelated);
   const [activeImage, setActiveImage] = useState(0);
   const [reviews, setReviews] = useState([]);
   const [reviewForm, setReviewForm] = useState({ rating: 5, comment: '' });
@@ -48,6 +54,11 @@ export default function ProductDetails() {
   useEffect(() => {
     if (!id) return;
     setSelectedColor(''); setSelectedSize(''); setQuantity(1);
+
+    // If SSR already loaded the correct product, don't immediately refetch.
+    if (initialProduct && String(initialProduct?._id || '') === String(id)) {
+      return;
+    }
 
     fetch(`${API_BASE}/products/${id}`)
       .then((r) => r.json())
@@ -149,14 +160,67 @@ export default function ProductDetails() {
   const colors = product?.colors?.filter(Boolean) || [];
   const sizes = product?.sizes?.filter(Boolean) || [];
 
+  const siteUrl = getSiteUrl();
+  const canonical = product?._id ? `${siteUrl}/product/${product._id}` : `${siteUrl}/product/${id || ''}`;
+  const title = product?.name || 'Product';
+  const description = product?.description
+    ? String(product.description).slice(0, 160)
+    : 'Shop this product on OpenBazar. Verified sellers, secure payments, and fast delivery.';
+  const ogImage = resolveImageSrc(images?.[0]);
+
+  const offerPrice = Number(product?.discountPrice ?? product?.price ?? 0);
+  const currency = 'BDT';
+
+  const jsonLd = product ? [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+        { '@type': 'ListItem', position: 2, name: 'Product', item: canonical },
+      ]
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Product',
+      name: title,
+      description,
+      image: images.length ? images.map((img) => resolveImageSrc(img)) : [resolveImageSrc(null)],
+      sku: String(product._id),
+      brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
+      category: product.category || undefined,
+      offers: {
+        '@type': 'Offer',
+        url: canonical,
+        priceCurrency: currency,
+        price: Number.isFinite(offerPrice) ? offerPrice : 0,
+        availability: (Number(product?.stock ?? 1) <= 0) ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock'
+      },
+      aggregateRating: (product.numReviews && Number(product.numReviews) > 0) ? {
+        '@type': 'AggregateRating',
+        ratingValue: Number(product.rating || 0),
+        reviewCount: Number(product.numReviews || 0)
+      } : undefined
+    }
+  ] : null;
+
   if (!product) return (
     <MarketplaceLayout>
+      <SEO title="Loading product" description="Loading product details on OpenBazar." canonical={`${siteUrl}/product/${id || ''}`} noindex />
       <main className="mx-auto max-w-7xl p-10 text-center text-slate-400 animate-pulse">Loading product...</main>
     </MarketplaceLayout>
   );
 
   return (
     <MarketplaceLayout>
+      <SEO
+        title={title}
+        description={description}
+        canonical={canonical}
+        image={ogImage}
+        type="product"
+        jsonLd={jsonLd}
+      />
       <main className="mx-auto max-w-7xl space-y-8 px-4 py-6 md:px-6">
 
         {/* ── Main product card ── */}
@@ -427,4 +491,40 @@ export default function ProductDetails() {
       </main>
     </MarketplaceLayout>
   );
+}
+
+export async function getServerSideProps(ctx) {
+  const { id } = ctx.params || {};
+  if (!id) return { props: { initialProduct: null, initialRelated: [] } };
+
+  const fetchJson = async (url, fallback) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return fallback;
+      return await res.json();
+    } catch {
+      return fallback;
+    }
+  };
+
+  const product = await fetchJson(`${API_BASE}/products/${id}`, null);
+
+  let related = [];
+  if (product?.category) {
+    const rel = await fetchJson(`${API_BASE}/products?category=${encodeURIComponent(product.category)}&limit=5`, { products: [] });
+    const items = Array.isArray(rel?.products) ? rel.products : [];
+    related = items.filter((p) => p && p._id && p._id !== product._id).slice(0, 4);
+  }
+
+  // Helpful for CDNs (Vercel) – safe short caching.
+  if (ctx.res) {
+    ctx.res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+  }
+
+  return {
+    props: {
+      initialProduct: product,
+      initialRelated: related,
+    }
+  };
 }

@@ -6,18 +6,31 @@ import ProductCard from '../../components/ProductCard';
 import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import SmartImage from '../../components/SmartImage';
 import VerifiedBadge from '../../components/VerifiedBadge';
+import SEO from '../../components/SEO';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
-export default function SellerProfile() {
+function getSiteUrl() {
+  const base = process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://open-bazar.me';
+  return base.replace(/\/$/, '');
+}
+
+export default function SellerProfile({ initialSeller = null, initialProducts = [] }) {
   const router = useRouter();
   const { id } = router.query;
-  const [seller, setSeller] = useState(null);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [seller, setSeller] = useState(initialSeller);
+  const [products, setProducts] = useState(initialProducts);
+  const [loading, setLoading] = useState(!initialSeller);
 
   useEffect(() => {
     if (!id) return;
+
+    // If SSR data doesn't match current route, refetch.
+    if (initialSeller && String(initialSeller?._id || initialSeller?.id || '') === String(id)) {
+      setLoading(false);
+      return;
+    }
+
     Promise.all([
       fetch(`${API_BASE}/auth/seller/${id}`).then((r) => r.json()).catch(() => null),
       fetch(`${API_BASE}/products?seller=${id}&limit=24`).then((r) => r.json()).catch(() => ({ products: [] }))
@@ -47,8 +60,39 @@ export default function SellerProfile() {
   const avgRating = products.length ? (totalRating / products.length).toFixed(1) : '—';
   const totalSold = products.reduce((s, p) => s + Number(p.soldCount || 0), 0);
 
+  const siteUrl = getSiteUrl();
+  const canonical = `${siteUrl}/seller/${seller._id || id}`;
+  const sellerName = seller.storeName || seller.name || 'Seller';
+  const photo = seller.photoUrl ? `${API_BASE.replace(/\/api$/, '')}${seller.photoUrl}` : '/api/logo';
+
+  const jsonLd = [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'Organization',
+      name: sellerName,
+      url: canonical,
+      logo: photo,
+      description: 'Verified seller on OpenBazar'
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+        { '@type': 'ListItem', position: 2, name: 'Seller', item: canonical }
+      ]
+    }
+  ];
+
   return (
     <MarketplaceLayout>
+      <SEO
+        title={sellerName}
+        description={`Shop products from ${sellerName} on OpenBazar. Verified seller, secure payments, and fast delivery across Bangladesh.`}
+        canonical={canonical}
+        image={photo}
+        jsonLd={jsonLd}
+      />
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-6">
         {/* ── Seller Header ── */}
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -115,4 +159,31 @@ export default function SellerProfile() {
       </main>
     </MarketplaceLayout>
   );
+}
+
+export async function getServerSideProps(ctx) {
+  const { id } = ctx.params || {};
+  if (!id) return { props: { initialSeller: null, initialProducts: [] } };
+
+  const fetchJson = async (url, fallback) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return fallback;
+      return await res.json();
+    } catch {
+      return fallback;
+    }
+  };
+
+  const [sellerData, productData] = await Promise.all([
+    fetchJson(`${API_BASE}/auth/seller/${id}`, null),
+    fetchJson(`${API_BASE}/products?seller=${id}&limit=24`, { products: [] })
+  ]);
+
+  return {
+    props: {
+      initialSeller: sellerData,
+      initialProducts: Array.isArray(productData?.products) ? productData.products : []
+    }
+  };
 }

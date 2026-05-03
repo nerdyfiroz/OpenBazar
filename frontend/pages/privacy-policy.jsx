@@ -1,9 +1,15 @@
 import Link from 'next/link';
 import MarketplaceLayout from '../components/MarketplaceLayout';
+import SEO from '../components/SEO';
 
 export default function PrivacyPolicy() {
   return (
     <MarketplaceLayout>
+      <SEO
+        title="Privacy Policy"
+        description="Read OpenBazar privacy policy and learn how we collect, use, and protect your information."
+        canonical="/privacy-policy"
+      />
       <main className="mx-auto max-w-3xl px-4 py-10">
         <h1 className="text-3xl font-black">Privacy Policy</h1>
         <p className="mt-2 text-sm text-slate-500">Last updated: April 2026</p>

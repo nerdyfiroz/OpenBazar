@@ -2,7 +2,8 @@ import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
-import { resolveImageSrc, FALLBACK_IMAGE } from '../../utils/resolveImageSrc';
+import { resolveImageSrc } from '../../utils/resolveImageSrc';
+import SmartImage from '../../components/SmartImage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -163,8 +164,15 @@ export default function TrackOrder() {
                   const img = resolveImageSrc(prod.images?.[0] || prod.photos?.[0]);
                   return (
                     <li key={i} className="flex items-center gap-3">
-                      <img src={img} alt={name} className="h-14 w-14 rounded-lg object-cover"
-                        onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }} />
+                      <div className="relative h-14 w-14 overflow-hidden rounded-lg bg-slate-100">
+                        <SmartImage
+                          src={img}
+                          alt={name}
+                          fill
+                          sizes="56px"
+                          className="object-cover"
+                        />
+                      </div>
                       <div className="flex-1">
                         <p className="font-semibold">{name}</p>
                         <p className="text-xs text-slate-500">× {qty}</p>

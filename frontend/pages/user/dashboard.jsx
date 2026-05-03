@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
 import { useStore } from '../../components/StoreProvider';
-import { resolveImageSrc, FALLBACK_IMAGE } from '../../utils/resolveImageSrc';
+import { resolveImageSrc } from '../../utils/resolveImageSrc';
+import SmartImage from '../../components/SmartImage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -165,8 +166,15 @@ export default function UserDashboard() {
                   return (
                     <div key={item._id} className="overflow-hidden rounded-xl border border-slate-200">
                       <Link href={`/product/${item._id}`}>
-                        <img src={img} alt={item.name} className="h-36 w-full object-cover hover:opacity-90 transition"
-                          onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }} />
+                        <div className="relative h-36 w-full bg-slate-100">
+                          <SmartImage
+                            src={img}
+                            alt={item.name}
+                            fill
+                            sizes="(max-width: 1024px) 50vw, 33vw"
+                            className="object-cover hover:opacity-90 transition"
+                          />
+                        </div>
                       </Link>
                       <div className="p-3">
                         <Link href={`/product/${item._id}`} className="line-clamp-2 text-sm font-semibold hover:text-orange-600">

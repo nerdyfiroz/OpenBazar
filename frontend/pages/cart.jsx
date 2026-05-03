@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { useState } from 'react';
 import MarketplaceLayout from '../components/MarketplaceLayout';
 import { useStore } from '../components/StoreProvider';
-import { resolveImageSrc, FALLBACK_IMAGE } from '../utils/resolveImageSrc';
+import { resolveImageSrc } from '../utils/resolveImageSrc';
+import SmartImage from '../components/SmartImage';
 
 export default function Cart() {
   const {
@@ -55,7 +56,15 @@ export default function Cart() {
             <div className="space-y-3">
               {cart.map((item) => (
                 <article key={item.cartKey || item._id} className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 p-3">
-                  <img src={resolveImageSrc(item.images?.[0] || item.photos?.[0])} alt={item.name} className="h-16 w-16 rounded-lg object-cover" onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }} />
+                  <div className="relative h-16 w-16 overflow-hidden rounded-lg bg-slate-100">
+                    <SmartImage
+                      src={resolveImageSrc(item.images?.[0] || item.photos?.[0])}
+                      alt={item.name}
+                      fill
+                      sizes="64px"
+                      className="object-cover"
+                    />
+                  </div>
                   <div className="min-w-[200px] flex-1">
                     <p className="font-semibold">{item.name}</p>
                     {item.selectedWeight && <p className="text-xs font-bold text-orange-600">Weight: {item.selectedWeight}</p>}

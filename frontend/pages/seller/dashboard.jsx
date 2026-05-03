@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
-import { resolveImageSrc, FALLBACK_IMAGE } from '../../utils/resolveImageSrc';
+import { resolveImageSrc } from '../../utils/resolveImageSrc';
+import SmartImage from '../../components/SmartImage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 const CATEGORIES = [
@@ -380,12 +381,15 @@ export default function SellerDashboard() {
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   {products.map((p) => (
                     <article key={p._id} className="rounded-xl border border-slate-200 p-4 shadow-sm">
-                      <img
-                        src={resolveImageSrc(p.images?.[0] || p.photos?.[0])}
-                        alt={p.name}
-                        className="mb-3 h-40 w-full rounded-lg object-cover"
-                        onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
-                      />
+                      <div className="relative mb-3 h-40 w-full overflow-hidden rounded-lg bg-slate-100">
+                        <SmartImage
+                          src={resolveImageSrc(p.images?.[0] || p.photos?.[0])}
+                          alt={p.name}
+                          fill
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          className="object-cover"
+                        />
+                      </div>
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <h3 className="font-semibold leading-tight">{p.name}</h3>

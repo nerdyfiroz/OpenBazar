@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
 import ProductCard from '../../components/ProductCard';
-import { resolveImageSrc, FALLBACK_IMAGE } from '../../utils/resolveImageSrc';
+import { resolveImageSrc } from '../../utils/resolveImageSrc';
+import SmartImage from '../../components/SmartImage';
 import VerifiedBadge from '../../components/VerifiedBadge';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
@@ -54,7 +55,14 @@ export default function SellerProfile() {
           <div className="flex flex-wrap items-center gap-5">
               <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-slate-100 shadow-lg">
                 {seller.photoUrl ? (
-                  <img src={`${API_BASE.replace(/\/api$/, '')}${seller.photoUrl}`} alt={seller.storeName} className="h-full w-full object-cover" />
+                  <SmartImage
+                    src={`${API_BASE.replace(/\/api$/, '')}${seller.photoUrl}`}
+                    alt={seller.storeName}
+                    width={80}
+                    height={80}
+                    sizes="80px"
+                    className="h-full w-full object-cover"
+                  />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-400 to-amber-500 text-3xl font-black text-white">
                     {(seller.storeName || seller.name || 'S')[0].toUpperCase()}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/router';
-import { resolveImageSrc, FALLBACK_IMAGE } from '../utils/resolveImageSrc';
+import { resolveImageSrc } from '../utils/resolveImageSrc';
+import SmartImage from './SmartImage';
 
 export default function MangoSelectionModal({ product, onClose, onAdd }) {
   const router = useRouter();
@@ -81,11 +82,12 @@ export default function MangoSelectionModal({ product, onClose, onAdd }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative h-48 bg-slate-100">
-          <img 
-            src={resolveImageSrc(product.images?.[0] || product.photos?.[0])} 
+          <SmartImage
+            src={resolveImageSrc(product.images?.[0] || product.photos?.[0])}
             alt={product.name}
-            className="h-full w-full object-cover"
-            onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
+            fill
+            sizes="(max-width: 640px) 100vw, 512px"
+            className="object-cover"
           />
           <button onClick={onClose} className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-full bg-white/80 font-bold text-slate-800 shadow hover:bg-white">✕</button>
         </div>

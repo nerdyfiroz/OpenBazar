@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from './StoreProvider';
+import SmartImage from './SmartImage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -50,7 +51,16 @@ export default function MarketplaceLayout({ children }) {
         <div className="mx-auto flex max-w-7xl items-center gap-3 px-3 py-3 md:px-6">
           {/* Logo */}
           <Link href="/" className="flex-shrink-0">
-            <img src="/api/logo" alt="OpenBazar" className="h-16 w-auto object-contain md:h-24 lg:h-28" />
+            <div className="relative h-16 w-36 md:h-24 md:w-44 lg:h-28 lg:w-52">
+              <SmartImage
+                src="/api/logo"
+                alt="OpenBazar"
+                fill
+                priority
+                sizes="(max-width: 768px) 144px, (max-width: 1024px) 176px, 208px"
+                className="object-contain"
+              />
+            </div>
           </Link>
 
           {/* Search — hidden on very small mobile, shown from sm */}

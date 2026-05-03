@@ -2,7 +2,8 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MarketplaceLayout from '../components/MarketplaceLayout';
 import ProductCard from '../components/ProductCard';
-import { resolveImageSrc, FALLBACK_IMAGE } from '../utils/resolveImageSrc';
+import { resolveImageSrc } from '../utils/resolveImageSrc';
+import SmartImage from '../components/SmartImage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -114,30 +115,41 @@ function HeroBanner() {
   );
 }
 
-export default function Home() {
-  const [products, setProducts] = useState([]);
-  const [flashSale, setFlashSale] = useState({ status: 'inactive', count: 0, nextEndsAt: null });
+export default function Home({
+  initialProducts = [],
+  initialFlashSale = { status: 'inactive', count: 0, nextEndsAt: null },
+  initialSalesAndPreorders = [],
+}) {
+  const [products, setProducts] = useState(initialProducts);
+  const [flashSale, setFlashSale] = useState(initialFlashSale);
   const [flashSaleEndsIn, setFlashSaleEndsIn] = useState('00:00:00');
   const [recentlyViewed, setRecentlyViewed] = useState([]);
-  const [salesAndPreorders, setSalesAndPreorders] = useState([]);
+  const [salesAndPreorders, setSalesAndPreorders] = useState(initialSalesAndPreorders);
 
   useEffect(() => {
     fetch(`${API_BASE}/dashboard/visit`, { method: 'POST' }).catch(() => {});
 
-    fetch(`${API_BASE}/products?limit=24`)
-      .then((r) => r.json())
-      .then((data) => setProducts(Array.isArray(data.products) ? data.products : (Array.isArray(data) ? data : [])))
-      .catch(() => setProducts([]));
+    // If SSR didn't provide data (or API failed), fetch on client as a fallback.
+    if (!initialProducts?.length) {
+      fetch(`${API_BASE}/products?limit=24`)
+        .then((r) => r.json())
+        .then((data) => setProducts(Array.isArray(data.products) ? data.products : (Array.isArray(data) ? data : [])))
+        .catch(() => setProducts([]));
+    }
 
-    fetch(`${API_BASE}/dashboard/flash-sale`)
-      .then((r) => r.json())
-      .then((data) => setFlashSale({ status: data?.status || 'inactive', count: Number(data?.count || 0), nextEndsAt: data?.nextEndsAt || null }))
-      .catch(() => {});
+    if (!initialFlashSale?.nextEndsAt && initialFlashSale?.status !== 'active') {
+      fetch(`${API_BASE}/dashboard/flash-sale`)
+        .then((r) => r.json())
+        .then((data) => setFlashSale({ status: data?.status || 'inactive', count: Number(data?.count || 0), nextEndsAt: data?.nextEndsAt || null }))
+        .catch(() => {});
+    }
 
-    fetch(`${API_BASE}/products?saleType=sale,preorder&limit=8`)
-      .then((r) => r.json())
-      .then((data) => setSalesAndPreorders(Array.isArray(data.products) ? data.products : []))
-      .catch(() => setSalesAndPreorders([]));
+    if (!initialSalesAndPreorders?.length) {
+      fetch(`${API_BASE}/products?saleType=sale,preorder&limit=8`)
+        .then((r) => r.json())
+        .then((data) => setSalesAndPreorders(Array.isArray(data.products) ? data.products : []))
+        .catch(() => setSalesAndPreorders([]));
+    }
 
     // Load recently viewed from localStorage
     try {
@@ -279,9 +291,15 @@ export default function Home() {
             {recentlyViewed.map((p) => (
               <Link key={p._id} href={`/product/${p._id}`}
                 className="group rounded-2xl border border-slate-200 bg-white p-3 hover:shadow-md transition">
-                <img src={resolveImageSrc(p.images?.[0] || p.photos?.[0])} alt={p.name}
-                  className="h-28 w-full rounded-xl object-cover group-hover:opacity-90"
-                  onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }} />
+                <div className="relative h-28 w-full overflow-hidden rounded-xl bg-slate-100">
+                  <SmartImage
+                    src={resolveImageSrc(p.images?.[0] || p.photos?.[0])}
+                    alt={p.name}
+                    fill
+                    sizes="(max-width: 640px) 50vw, 16vw"
+                    className="object-cover group-hover:opacity-90"
+                  />
+                </div>
                 <p className="mt-2 line-clamp-2 text-xs font-semibold text-slate-700">{p.name}</p>
                 <p className="mt-1 text-sm font-black text-orange-500">৳{Number(p.discountPrice ?? p.price ?? 0).toFixed(0)}</p>
               </Link>
@@ -310,4 +328,42 @@ export default function Home() {
       </section>
     </MarketplaceLayout>
   );
+}
+
+export async function getServerSideProps() {
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || 'http://localhost:5000/api';
+
+  const fetchJson = async (url) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  };
+
+  const [productsRes, flashSaleRes, salesRes] = await Promise.all([
+    fetchJson(`${API_BASE}/products?limit=24`),
+    fetchJson(`${API_BASE}/dashboard/flash-sale`),
+    fetchJson(`${API_BASE}/products?saleType=sale,preorder&limit=8`),
+  ]);
+
+  const initialProducts = Array.isArray(productsRes?.products)
+    ? productsRes.products
+    : (Array.isArray(productsRes) ? productsRes : []);
+
+  const initialFlashSale = flashSaleRes
+    ? { status: flashSaleRes?.status || 'inactive', count: Number(flashSaleRes?.count || 0), nextEndsAt: flashSaleRes?.nextEndsAt || null }
+    : { status: 'inactive', count: 0, nextEndsAt: null };
+
+  const initialSalesAndPreorders = Array.isArray(salesRes?.products) ? salesRes.products : [];
+
+  return {
+    props: {
+      initialProducts,
+      initialFlashSale,
+      initialSalesAndPreorders,
+    },
+  };
 }

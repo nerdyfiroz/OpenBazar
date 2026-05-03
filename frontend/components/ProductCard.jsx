@@ -1,9 +1,12 @@
 import Link from 'next/link';
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useStore } from './StoreProvider';
-import { resolveImageSrc, FALLBACK_IMAGE } from '../utils/resolveImageSrc';
+import { resolveImageSrc } from '../utils/resolveImageSrc';
 import VerifiedBadge from './VerifiedBadge';
-import MangoSelectionModal from './MangoSelectionModal';
+import SmartImage from './SmartImage';
+
+const MangoSelectionModal = dynamic(() => import('./MangoSelectionModal'), { ssr: false });
 
 export default function ProductCard({ product }) {
   const { addToCart, toggleWishlist, wishlist } = useStore();
@@ -15,12 +18,12 @@ export default function ProductCard({ product }) {
   return (
     <article className="group rounded-2xl border border-slate-200 bg-white p-3 shadow-sm transition hover:-translate-y-1 hover:shadow-xl">
       <div className="relative overflow-hidden rounded-xl bg-slate-100 h-44 w-full">
-        {/* Plain <img> — avoids next/image domain restrictions for uploaded files */}
-        <img
+        <SmartImage
           src={imageSrc}
           alt={product.name}
-          className="h-full w-full object-cover transition duration-300 group-hover:scale-105"
-          onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
+          fill
+          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+          className="object-cover transition duration-300 group-hover:scale-105"
         />
         {hasDiscount && (
           <span className="absolute left-2 top-2 z-10 rounded-full bg-orange-500 px-2 py-1 text-xs font-bold text-white">

@@ -5,11 +5,23 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
+let compression = null;
+try {
+  // Optional dependency: improves perf but shouldn't hard-crash local setups.
+  // Install via: npm i compression
+  compression = require('compression');
+} catch {
+  compression = null;
+}
 const path = require('path');
 
 dotenv.config();
 
 const app = express();
+
+// Basic hardening / perf
+app.disable('x-powered-by');
+if (compression) app.use(compression());
 
 const allowedOrigins = [
   'https://open-bazar.me',
@@ -56,7 +68,26 @@ uploadDirs.forEach(dir => {
   }
 });
 
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Cache static uploads (product photos, seller verification docs, etc.)
+// NOTE: we avoid `immutable` because filenames may be reused/overwritten.
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  maxAge: '7d',
+  etag: true,
+}));
+
+// Lightweight caching for public GET endpoints that are safe to cache briefly.
+app.use((req, res, next) => {
+  if (req.method !== 'GET') return next();
+
+  const p = req.path || '';
+
+  // Product lists / suggestions can be cached shortly to reduce repeat load.
+  if (p.startsWith('/api/products') || p.startsWith('/api/dashboard/flash-sale')) {
+    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=300');
+  }
+
+  return next();
+});
 
 // Basic rate limiting
 const limiter = rateLimit({

@@ -3,9 +3,10 @@ import { useEffect, useMemo, useState } from 'react';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
 import ProductCard from '../../components/ProductCard';
 import { useStore } from '../../components/StoreProvider';
-import { resolveImageSrc, FALLBACK_IMAGE } from '../../utils/resolveImageSrc';
+import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import Link from 'next/link';
+import SmartImage from '../../components/SmartImage';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
@@ -163,12 +164,14 @@ export default function ProductDetails() {
 
           {/* Gallery */}
           <div>
-            <div className="overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
-              <img
+            <div className="relative h-80 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50">
+              <SmartImage
                 src={resolveImageSrc(images[activeImage] || images[0])}
                 alt={product.name}
-                className="h-80 w-full object-contain transition duration-300 hover:scale-105"
-                onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
+                fill
+                priority
+                sizes="(max-width: 768px) 100vw, 50vw"
+                className="object-contain transition duration-300 hover:scale-105"
               />
             </div>
             {images.length > 1 && (
@@ -176,8 +179,15 @@ export default function ProductDetails() {
                 {images.map((img, idx) => (
                   <button key={idx} onClick={() => setActiveImage(idx)}
                     className={`h-16 w-16 overflow-hidden rounded-xl border-2 transition ${activeImage === idx ? 'border-orange-500' : 'border-slate-200'}`}>
-                    <img src={resolveImageSrc(img)} alt="" className="h-full w-full object-cover"
-                      onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }} />
+                    <div className="relative h-full w-full">
+                      <SmartImage
+                        src={resolveImageSrc(img)}
+                        alt=""
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                      />
+                    </div>
                   </button>
                 ))}
               </div>

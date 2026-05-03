@@ -13,6 +13,9 @@ try {
 const backendUrl = new URL(backendOrigin);
 
 const nextConfig = {
+  reactStrictMode: true,
+  poweredByHeader: false,
+  compress: true,
   images: {
     remotePatterns: [
       // Allow images from the backend server

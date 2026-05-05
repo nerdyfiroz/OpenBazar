@@ -27,7 +27,7 @@ export default function MyApp({ Component, pageProps }) {
   return (
     <StoreProvider>
       <Head>
-        <meta name="keywords" content="e-commerce, shopping, openbazar, marketplace, online shopping, fashion, electronics" />
+        <meta name="keywords" content="buy mango online Bangladesh, fresh mango delivery, summer mango sale, আম কিনুন অনলাইন, আম ডেলিভারি, Rajshahi mango, Chapai mango, OpenBazar, e-commerce Bangladesh, online marketplace BD, electronics, fashion, beauty, grocery" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <link rel="icon" href="/api/favicon" type="image/svg+xml" sizes="any" />
         <link rel="icon" href="/api/logo" type="image/png" sizes="32x32" />

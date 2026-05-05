@@ -206,16 +206,73 @@ export default function Home({
         target: `${siteUrl}/category?q={search_term_string}`,
         'query-input': 'required name=search_term_string'
       }
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'SaleEvent',
+      name: 'Summer Mango Festival 2025',
+      description: 'Buy fresh farm mangoes online — 10kg to 40kg packs with special ৳10/kg delivery across Bangladesh. Limited summer offer on OpenBazar.',
+      startDate: '2025-04-01',
+      endDate: '2025-08-31',
+      eventStatus: 'https://schema.org/EventScheduled',
+      eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
+      location: {
+        '@type': 'VirtualLocation',
+        url: `${siteUrl}/category?category=Mango`
+      },
+      organizer: {
+        '@type': 'Organization',
+        name: 'OpenBazar',
+        url: siteUrl
+      },
+      offers: {
+        '@type': 'Offer',
+        url: `${siteUrl}/category?category=Mango`,
+        priceCurrency: 'BDT',
+        availability: 'https://schema.org/InStock',
+        description: 'Fresh mangoes from ৳10/kg delivery. Minimum order 10kg.'
+      }
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'Where can I buy fresh mangoes online in Bangladesh?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'You can buy fresh mangoes directly from verified farmers and sellers on OpenBazar. We offer farm-fresh Rajshahi, Chapai, Langra, Himsagar and Fazli mangoes with nationwide delivery.'
+          }
+        },
+        {
+          '@type': 'Question',
+          name: 'What is the delivery charge for mangoes on OpenBazar?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Mango delivery is available at a special summer rate of ৳10 per kg. For a 10kg pack the delivery cost is ৳100, for 20kg it is ৳200, and so on.'
+          }
+        },
+        {
+          '@type': 'Question',
+          name: 'Can I buy mangoes in bulk online from Bangladesh?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Yes! OpenBazar lets you buy mangoes in bulk packs of 10kg, 15kg, 20kg, 30kg and 40kg directly from farm-to-door verified sellers at the best prices.'
+          }
+        }
+      ]
     }
   ];
 
   return (
     <MarketplaceLayout>
       <SEO
-        title="Online Marketplace in Bangladesh"
-        description="Shop electronics, fashion, groceries, mangoes and more from verified sellers on OpenBazar. Secure payments and fast delivery across Bangladesh."
+        title="Buy Mango Online Bangladesh | Summer Mango Sale 2025"
+        description="Shop fresh farm mangoes online in Bangladesh — 10kg to 40kg, ৳10/kg delivery. Also find electronics, fashion, beauty & groceries from verified sellers on OpenBazar. Summer sale on now!"
         canonical="/"
         jsonLd={homeJsonLd}
+        keywords="buy mango online Bangladesh, fresh mango delivery, summer mango sale, আম কিনুন অনলাইন, আম ডেলিভারি বাংলাদেশ, mango festival Bangladesh, Rajshahi mango buy, Chapai mango online, আমের দাম, সেরা আম কোথায় পাওয়া যায়, OpenBazar mango, online marketplace Bangladesh"
       />
       {/* ── Hero Banner Carousel ── */}
       <section className="mx-auto max-w-7xl grid gap-4 px-4 py-6 md:grid-cols-[1fr_280px] md:px-6">

@@ -46,7 +46,13 @@ function generateSiteMap(products) {
        <changefreq>monthly</changefreq>
        <priority>0.5</priority>
      </url>
-     ${CATEGORIES.map((c) => `
+     <url>
+       <loc>${FRONTEND_URL}/category?category=Mango</loc>
+       <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
+       <changefreq>daily</changefreq>
+       <priority>0.95</priority>
+     </url>
+     ${CATEGORIES.filter(c => c !== 'Mango').map((c) => `
      <url>
        <loc>${FRONTEND_URL}/category?category=${encodeURIComponent(c)}</loc>
        <changefreq>daily</changefreq>

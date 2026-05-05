@@ -66,22 +66,86 @@ export default function Category({ initialProducts = [], initialLoading = true, 
   const siteUrl = getSiteUrl();
   const canonicalBase = `${siteUrl}/category`;
 
-  // SEO: index only clean pages (category-only or q-only). noindex filtered combos.
+  // SEO: index clean pages (category-only or q-only). noindex filtered combos.
+  // Special case: Mango category is always indexed (high-value page).
+  const isMango = query.category === 'Mango';
   const hasAnyFilter = Boolean(query.brand || query.minPrice || query.maxPrice || query.rating || query.saleType || query.trustedSeller);
-  const noindex = hasAnyFilter;
+  const noindex = hasAnyFilter && !isMango;
 
   const pageLabel = query.q
     ? `Search: ${query.q}`
     : (query.category ? query.category : 'All Products');
 
-  const seoTitle = pageLabel;
-  const seoDescription = query.q
-    ? `Search results for "${query.q}" on OpenBazar. Browse verified sellers and fast delivery across Bangladesh.`
-    : query.category
-      ? `Buy ${query.category} products from verified sellers on OpenBazar. Secure payments and fast delivery.`
-      : 'Browse all products on OpenBazar. Shop from verified sellers with secure payments and fast delivery.';
+  // Mango-specific SEO copy
+  const mangoTitle = 'Buy Fresh Mango Online Bangladesh | Summer Mango Sale 2025';
+  const mangoDescription = 'Order farm-fresh mangoes online in Bangladesh — Rajshahi, Chapai, Langra, Himsagar & Fazli varieties. Bulk packs 10kg–40kg with ৳10/kg delivery. Verified sellers on OpenBazar.';
+  const mangoKeywords = 'buy mango online Bangladesh, fresh mango delivery Bangladesh, summer mango sale, আম কিনুন, আম ডেলিভারি, Rajshahi mango online, Chapai mango buy, Langra mango Bangladesh, Himsagar mango, Fazli mango, আম পাইকারি দাম, bulk mango Bangladesh, mango festival 2025, OpenBazar mango';
 
-  const jsonLd = {
+  const seoTitle = isMango ? mangoTitle : pageLabel;
+  const seoDescription = isMango ? mangoDescription
+    : query.q
+      ? `Search results for "${query.q}" on OpenBazar. Browse verified sellers and fast delivery across Bangladesh.`
+      : query.category
+        ? `Buy ${query.category} products from verified sellers on OpenBazar. Secure payments and fast delivery.`
+        : 'Browse all products on OpenBazar. Shop from verified sellers with secure payments and fast delivery.';
+  const seoKeywords = isMango ? mangoKeywords : undefined;
+
+  // Build canonical: include category/q param so these pages are crawlable
+  const canonicalUrl = query.category
+    ? `${canonicalBase}?category=${encodeURIComponent(query.category)}`
+    : query.q
+      ? `${canonicalBase}?q=${encodeURIComponent(query.q)}`
+      : canonicalBase;
+
+  const jsonLd = isMango ? [
+    {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
+        { '@type': 'ListItem', position: 2, name: 'Shop', item: canonicalBase },
+        { '@type': 'ListItem', position: 3, name: 'Mango', item: `${canonicalBase}?category=Mango` }
+      ]
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      name: 'Fresh Mangoes Online — OpenBazar Summer Sale',
+      description: 'Farm-fresh mangoes available for delivery across Bangladesh. Rajshahi, Chapai, Langra, Himsagar & Fazli varieties in 10kg–40kg packs.',
+      url: `${canonicalBase}?category=Mango`,
+      numberOfItems: products.length || undefined
+    },
+    {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: [
+        {
+          '@type': 'Question',
+          name: 'অনলাইনে আম কোথায় কিনবো? / Where to buy mango online in Bangladesh?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'OpenBazar-এ রাজশাহী, চাঁপাইনবাবগঞ্জ, লাঙ্ড়া, হিমসাগর বা ফজলি আম সরাসরি ফার্ম থেকে অর্ডার করতে পারবেন. You can order farm-fresh mangoes directly from verified sellers across Bangladesh on OpenBazar with fast delivery.'
+          }
+        },
+        {
+          '@type': 'Question',
+          name: 'What mango varieties are available on OpenBazar?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'OpenBazar offers Rajshahi Langra, Himsagar, Fazli, Gopalbhog, Amrapali and Chapai mangoes from verified farm sellers. Seasonal availability varies.'
+          }
+        },
+        {
+          '@type': 'Question',
+          name: 'How much does mango delivery cost in Bangladesh?',
+          acceptedAnswer: {
+            '@type': 'Answer',
+            text: 'Mango delivery on OpenBazar costs only ৳10 per kg during our summer festival. Order 10kg, 20kg, 30kg or 40kg packs delivered to your door.'
+          }
+        }
+      ]
+    }
+  ] : {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
@@ -117,9 +181,10 @@ export default function Category({ initialProducts = [], initialLoading = true, 
       <SEO
         title={seoTitle}
         description={seoDescription}
-        canonical={canonicalBase}
+        canonical={canonicalUrl}
         noindex={noindex}
         jsonLd={jsonLd}
+        keywords={seoKeywords}
       />
       <div className="mx-auto grid max-w-7xl gap-4 px-4 py-6 md:grid-cols-[280px_1fr] md:px-6">
         <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-4">

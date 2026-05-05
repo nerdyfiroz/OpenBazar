@@ -162,14 +162,40 @@ export default function ProductDetails({ initialProduct = null, initialRelated =
 
   const siteUrl = getSiteUrl();
   const canonical = product?._id ? `${siteUrl}/product/${product._id}` : `${siteUrl}/product/${id || ''}`;
-  const title = product?.name || 'Product';
-  const description = product?.description
-    ? String(product.description).slice(0, 160)
-    : 'Shop this product on OpenBazar. Verified sellers, secure payments, and fast delivery.';
+  const isMango = product?.category === 'Mango';
+
+  // Mango products get keyword-rich titles and descriptions
+  const title = isMango
+    ? `Buy ${product.name} Online | Fresh Mango Bangladesh`
+    : (product?.name || 'Product');
+
+  const description = isMango
+    ? `Order ${product.name} online in Bangladesh. Farm-fresh mango delivered to your door — bulk packs available, ৳10/kg delivery. Verified seller on OpenBazar.`
+    : (product?.description
+      ? String(product.description).slice(0, 160)
+      : 'Shop this product on OpenBazar. Verified sellers, secure payments, and fast delivery.');
+
+  const productKeywords = isMango
+    ? `${product.name}, buy mango online Bangladesh, fresh mango delivery, আম কিনুন, summer mango sale, Rajshahi mango, Chapai mango, farm fresh mango Bangladesh, OpenBazar mango`
+    : undefined;
+
   const ogImage = resolveImageSrc(images?.[0]);
 
   const offerPrice = Number(product?.discountPrice ?? product?.price ?? 0);
   const currency = 'BDT';
+
+  // Build weight-based variant offers for mango products
+  const weightOffers = isMango && mangoWeightPrices.length
+    ? mangoWeightPrices.map((wp) => ({
+        '@type': 'Offer',
+        name: `${product.name} — ${wp.weight}`,
+        url: canonical,
+        priceCurrency: currency,
+        price: Number(wp.price),
+        availability: 'https://schema.org/InStock',
+        description: `Fresh mango — ${wp.weight} pack, delivered anywhere in Bangladesh.`
+      }))
+    : null;
 
   const jsonLd = product ? [
     {
@@ -177,7 +203,12 @@ export default function ProductDetails({ initialProduct = null, initialRelated =
       '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
-        { '@type': 'ListItem', position: 2, name: 'Product', item: canonical },
+        ...(isMango ? [
+          { '@type': 'ListItem', position: 2, name: 'Mango', item: `${siteUrl}/category?category=Mango` },
+          { '@type': 'ListItem', position: 3, name: product.name, item: canonical }
+        ] : [
+          { '@type': 'ListItem', position: 2, name: 'Product', item: canonical }
+        ])
       ]
     },
     {
@@ -188,14 +219,11 @@ export default function ProductDetails({ initialProduct = null, initialRelated =
       image: images.length ? images.map((img) => resolveImageSrc(img)) : [resolveImageSrc(null)],
       sku: String(product._id),
       brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
-      category: product.category || undefined,
-      offers: {
-        '@type': 'Offer',
-        url: canonical,
-        priceCurrency: currency,
-        price: Number.isFinite(offerPrice) ? offerPrice : 0,
-        availability: (Number(product?.stock ?? 1) <= 0) ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock'
-      },
+      category: isMango ? 'Mango, Fresh Fruit, Summer Fruit, Bangladesh Mango' : (product.category || undefined),
+      keywords: isMango ? `fresh mango, buy mango online, ${product.name}, Bangladesh mango` : undefined,
+      offers: weightOffers
+        ? { '@type': 'AggregateOffer', lowPrice: Math.min(...mangoWeightPrices.map(w => w.price)), highPrice: Math.max(...mangoWeightPrices.map(w => w.price)), priceCurrency: currency, offerCount: weightOffers.length, offers: weightOffers, availability: 'https://schema.org/InStock' }
+        : { '@type': 'Offer', url: canonical, priceCurrency: currency, price: Number.isFinite(offerPrice) ? offerPrice : 0, availability: (Number(product?.stock ?? 1) <= 0) ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock' },
       aggregateRating: (product.numReviews && Number(product.numReviews) > 0) ? {
         '@type': 'AggregateRating',
         ratingValue: Number(product.rating || 0),
@@ -220,6 +248,7 @@ export default function ProductDetails({ initialProduct = null, initialRelated =
         image={ogImage}
         type="product"
         jsonLd={jsonLd}
+        keywords={productKeywords}
       />
       <main className="mx-auto max-w-7xl space-y-8 px-4 py-6 md:px-6">
 

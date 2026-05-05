@@ -7,6 +7,15 @@ export default function Document() {
         <meta charSet="utf-8" />
         <meta name="theme-color" content="#f97316" />
 
+        {/* Geo targeting for Bangladesh */}
+        <meta name="geo.region" content="BD" />
+        <meta name="geo.placename" content="Bangladesh" />
+        <meta name="geo.position" content="23.6850;90.3563" />
+        <meta name="ICBM" content="23.6850, 90.3563" />
+
+        {/* Language targeting */}
+        <meta httpEquiv="content-language" content="en-BD, bn" />
+
         {/* Performance hints */}
         <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="" />
 

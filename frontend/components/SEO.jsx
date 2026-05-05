@@ -24,16 +24,19 @@ export default function SEO({
   type = 'website',
   noindex = false,
   jsonLd,
+  keywords,
 }) {
   const fullTitle = title ? `${title} | ${SITE_NAME}` : SITE_NAME;
   const canon = canonical ? toAbsoluteUrl(canonical) : SITE_URL;
   const ogImage = toAbsoluteUrl(image || '/api/logo');
-  const metaDescription = description || 'Shop products from verified sellers in Bangladesh. Fast delivery and secure payments.';
+  const metaDescription = description || 'Buy fresh mangoes online in Bangladesh this summer. Shop electronics, fashion, groceries & more from verified sellers on OpenBazar. Secure payments, fast delivery.';
+  const metaKeywords = keywords || 'mango online Bangladesh, buy mango, summer mango sale, আম, আম কিনুন, fresh mango delivery, OpenBazar, online marketplace Bangladesh, e-commerce BD';
 
   return (
     <Head>
       <title>{fullTitle}</title>
       <meta name="description" content={metaDescription} />
+      <meta name="keywords" content={metaKeywords} />
 
       <link rel="canonical" href={canon} />
 

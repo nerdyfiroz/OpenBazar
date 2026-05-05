@@ -1,4 +1,15 @@
 User-agent: *
 Allow: /
+Allow: /category?category=Mango
+Allow: /category?category=
+Allow: /product/
+
+# Block admin, cart, checkout, and user-specific pages
+Disallow: /admin/
+Disallow: /cart
+Disallow: /checkout
+Disallow: /user/
+Disallow: /seller/dashboard
+Disallow: /api/
 
 Sitemap: https://open-bazar.me/sitemap.xml

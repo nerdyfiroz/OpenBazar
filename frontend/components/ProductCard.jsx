@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useStore } from './StoreProvider';
 import { resolveImageSrc } from '../utils/resolveImageSrc';
@@ -7,6 +8,15 @@ import VerifiedBadge from './VerifiedBadge';
 import SmartImage from './SmartImage';
 
 const MangoSelectionModal = dynamic(() => import('./MangoSelectionModal'), { ssr: false });
+
+// Renders children into document.body via a portal, bypassing any
+// CSS transform stacking context that would break position:fixed.
+function BodyPortal({ children }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  if (!mounted) return null;
+  return createPortal(children, document.body);
+}
 
 function firstString(value) {
   if (!value) return '';
@@ -85,13 +95,6 @@ export default function ProductCard({ product }) {
           >
             Add to Cart
           </button>
-          {showMangoModal && (
-            <MangoSelectionModal 
-              product={product} 
-              onClose={() => setShowMangoModal(false)} 
-              onAdd={(p, q) => addToCart(p, q)} 
-            />
-          )}
           <button
             type="button"
             onClick={() => toggleWishlist(product)}
@@ -100,6 +103,18 @@ export default function ProductCard({ product }) {
             ♥
           </button>
         </div>
+
+        {/* Portal ensures the modal renders at document.body level,
+            outside the card's CSS transform stacking context. */}
+        {showMangoModal && (
+          <BodyPortal>
+            <MangoSelectionModal
+              product={product}
+              onClose={() => setShowMangoModal(false)}
+              onAdd={(p, q) => addToCart(p, q)}
+            />
+          </BodyPortal>
+        )}
       </div>
     </article>
   );

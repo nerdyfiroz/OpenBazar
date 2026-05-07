@@ -72,13 +72,44 @@ export default function Cart() {
                     {item.selectedWeight && <p className="text-xs font-bold text-orange-600">Weight: {item.selectedWeight}</p>}
                     <p className="text-sm text-orange-500">৳{Number(item.unitPrice).toFixed(0)}</p>
                   </div>
-                  <input
-                    type="number"
-                    min="1"
-                    value={item.quantity}
-                    onChange={(e) => updateQuantity(item.cartKey || item._id, Number(e.target.value))}
-                    className="input w-20"
-                  />
+                  <div className="flex items-center gap-1 rounded-lg border border-slate-200 p-1">
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.cartKey || item._id, Math.max(1, Number(item.quantity) - 1))}
+                      className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-lg font-semibold text-slate-600 transition-colors hover:bg-slate-200"
+                    >
+                      -
+                    </button>
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '') {
+                          updateQuantity(item.cartKey || item._id, '');
+                        } else {
+                          const num = parseInt(val);
+                          if (!isNaN(num) && num > 0) {
+                            updateQuantity(item.cartKey || item._id, num);
+                          }
+                        }
+                      }}
+                      onBlur={(e) => {
+                        if (e.target.value === '' || Number(e.target.value) < 1) {
+                          updateQuantity(item.cartKey || item._id, 1);
+                        }
+                      }}
+                      className="h-8 w-12 text-center text-sm font-semibold outline-none bg-transparent [-moz-appearance:_textfield] [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => updateQuantity(item.cartKey || item._id, Number(item.quantity || 1) + 1)}
+                      className="flex h-8 w-8 items-center justify-center rounded-md bg-slate-100 text-lg font-semibold text-slate-600 transition-colors hover:bg-slate-200"
+                    >
+                      +
+                    </button>
+                  </div>
                   <button type="button" onClick={() => removeFromCart(item.cartKey || item._id)} className="text-sm font-semibold text-rose-500">Remove</button>
                 </article>
               ))}

@@ -135,6 +135,15 @@ export function StoreProvider({ children }) {
   };
 
   const updateQuantity = (idOrKey, quantity) => {
+    if (quantity === '') {
+      setCart((prev) => prev.map((item) => (
+        (item.cartKey || buildCartKey(item)) === idOrKey || item._id === idOrKey
+          ? { ...item, cartKey: item.cartKey || buildCartKey(item), quantity: '' }
+          : item
+      )));
+      return;
+    }
+
     if (quantity <= 0) {
       setCart((prev) => prev.filter((item) => {
         const key = item.cartKey || buildCartKey(item);

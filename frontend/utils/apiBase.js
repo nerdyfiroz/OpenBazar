@@ -8,6 +8,7 @@
  * - Also prevents typos / inconsistent defaults across pages.
  */
 
+// Default Render backend (used for preview deployments or as a last resort).
 const PRODUCTION_BACKEND_API = 'https://openbazar.onrender.com/api';
 
 export function getApiBase() {
@@ -22,7 +23,16 @@ export function getApiBase() {
   // Runtime fallback for deployed frontend when env vars are not present.
   if (typeof window !== 'undefined') {
     const host = String(window.location?.hostname || '').toLowerCase();
-    if (host.endsWith('open-bazar.me') || host.endsWith('vercel.app')) {
+
+    // On the real domain, prefer same-origin so we hit the “real” backend/data.
+    // (Hardcoding Render here often leads to “missing existing data” because it's a different DB.)
+    if (host.endsWith('open-bazar.me')) {
+      const origin = String(window.location?.origin || '').replace(/\/+$/, '');
+      if (origin) return `${origin}/api`;
+    }
+
+    // On preview deployments, use the Render backend by default.
+    if (host.endsWith('vercel.app')) {
       return PRODUCTION_BACKEND_API;
     }
   }

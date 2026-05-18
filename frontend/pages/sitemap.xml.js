@@ -1,7 +1,10 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
-const FRONTEND_URL = process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://open-bazar.me';
+const FRONTEND_URL = (process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://open-bazar.me').replace(/\/$/, '');
+
+const TODAY = new Date().toISOString().split('T')[0];
 
 const CATEGORIES = [
+  'Mango',
   'Electronics',
   'Fashion',
   'Beauty',
@@ -10,97 +13,114 @@ const CATEGORIES = [
   'Toys',
   'Grocery',
   'Food',
-  'Mango'
 ];
 
-function generateSiteMap(products) {
+// Static pages with their expected change frequencies and priorities
+const STATIC_PAGES = [
+  { path: '/',              changefreq: 'daily',   priority: '1.0', lastmod: TODAY },
+  { path: '/category',     changefreq: 'daily',   priority: '0.9', lastmod: TODAY },
+  { path: '/become-seller',changefreq: 'weekly',  priority: '0.7', lastmod: TODAY },
+  { path: '/about',        changefreq: 'monthly', priority: '0.5' },
+  { path: '/contact',      changefreq: 'monthly', priority: '0.5' },
+  { path: '/terms',        changefreq: 'monthly', priority: '0.4' },
+  { path: '/privacy-policy', changefreq: 'monthly', priority: '0.4' },
+];
+
+function urlTag({ loc, lastmod, changefreq, priority }) {
+  return `
+  <url>
+    <loc>${loc}</loc>
+    ${lastmod ? `<lastmod>${lastmod}</lastmod>` : ''}
+    <changefreq>${changefreq}</changefreq>
+    <priority>${priority}</priority>
+  </url>`;
+}
+
+function generateSiteMap(products, sellers) {
+  const staticUrls = STATIC_PAGES
+    .map((p) => urlTag({
+      loc: `${FRONTEND_URL}${p.path}`,
+      lastmod: p.lastmod,
+      changefreq: p.changefreq,
+      priority: p.priority,
+    }))
+    .join('');
+
+  // Mango first (highest value), then the rest
+  const categoryUrls = CATEGORIES.map((cat) => urlTag({
+    loc: `${FRONTEND_URL}/category?category=${encodeURIComponent(cat)}`,
+    lastmod: TODAY,
+    changefreq: 'daily',
+    priority: cat === 'Mango' ? '0.95' : '0.75',
+  })).join('');
+
+  const productUrls = products
+    .map(({ _id, updatedAt }) => urlTag({
+      loc: `${FRONTEND_URL}/product/${_id}`,
+      lastmod: updatedAt ? new Date(updatedAt).toISOString().split('T')[0] : TODAY,
+      changefreq: 'weekly',
+      priority: '0.85',
+    }))
+    .join('');
+
+  const sellerUrls = sellers
+    .map(({ _id, updatedAt }) => urlTag({
+      loc: `${FRONTEND_URL}/seller/${_id}`,
+      lastmod: updatedAt ? new Date(updatedAt).toISOString().split('T')[0] : TODAY,
+      changefreq: 'weekly',
+      priority: '0.65',
+    }))
+    .join('');
+
   return `<?xml version="1.0" encoding="UTF-8"?>
-   <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-     <url>
-       <loc>${FRONTEND_URL}</loc>
-       <changefreq>daily</changefreq>
-       <priority>1.0</priority>
-     </url>
-     <url>
-       <loc>${FRONTEND_URL}/category</loc>
-       <changefreq>daily</changefreq>
-       <priority>0.8</priority>
-     </url>
-     <url>
-       <loc>${FRONTEND_URL}/about</loc>
-       <changefreq>monthly</changefreq>
-       <priority>0.5</priority>
-     </url>
-     <url>
-       <loc>${FRONTEND_URL}/contact</loc>
-       <changefreq>monthly</changefreq>
-       <priority>0.5</priority>
-     </url>
-     <url>
-       <loc>${FRONTEND_URL}/terms</loc>
-       <changefreq>monthly</changefreq>
-       <priority>0.5</priority>
-     </url>
-     <url>
-       <loc>${FRONTEND_URL}/privacy-policy</loc>
-       <changefreq>monthly</changefreq>
-       <priority>0.5</priority>
-     </url>
-     <url>
-       <loc>${FRONTEND_URL}/category?category=Mango</loc>
-       <lastmod>${new Date().toISOString().split('T')[0]}</lastmod>
-       <changefreq>daily</changefreq>
-       <priority>0.95</priority>
-     </url>
-     ${CATEGORIES.filter(c => c !== 'Mango').map((c) => `
-     <url>
-       <loc>${FRONTEND_URL}/category?category=${encodeURIComponent(c)}</loc>
-       <changefreq>daily</changefreq>
-       <priority>0.7</priority>
-     </url>
-     `).join('')}
-     ${products
-       .map(({ _id, updatedAt }) => {
-         return `
-       <url>
-           <loc>${FRONTEND_URL}/product/${_id}</loc>
-           <lastmod>${new Date(updatedAt || Date.now()).toISOString()}</lastmod>
-           <changefreq>weekly</changefreq>
-           <priority>0.9</priority>
-       </url>
-     `;
-       })
-       .join('')}
-   </urlset>
- `;
+<urlset
+  xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.sitemaps.org/schemas/sitemap/0.9
+    http://www.sitemaps.org/schemas/sitemap/0.9/sitemap.xsd">
+${staticUrls}
+${categoryUrls}
+${productUrls}
+${sellerUrls}
+</urlset>`;
 }
 
 function SiteMap() {
-  // getServerSideProps will do the heavy lifting
+  // getServerSideProps handles the response
 }
 
 export async function getServerSideProps({ res }) {
-  let products = [];
-  try {
-    // If you have >1000 products, consider extending this to paginate.
-    const request = await fetch(`${API_BASE}/products?limit=2000`);
-    const data = await request.json();
-    products = Array.isArray(data.products) ? data.products : (Array.isArray(data) ? data : []);
-  } catch (error) {
-    console.error('Failed to fetch products for sitemap', error);
-  }
+  const fetchJson = async (url, fallback = []) => {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) return fallback;
+      return await r.json();
+    } catch {
+      return fallback;
+    }
+  };
 
-  // Generate the XML sitemap with the products data
-  const sitemap = generateSiteMap(products);
+  // Fetch products (up to 5000 to ensure full coverage)
+  const [productsData, sellersData] = await Promise.all([
+    fetchJson(`${API_BASE}/products?limit=5000&approved=true`),
+    fetchJson(`${API_BASE}/auth/sellers/public`, []),
+  ]);
 
-  res.setHeader('Content-Type', 'text/xml');
-  // Send the XML to the browser
+  const products = Array.isArray(productsData?.products)
+    ? productsData.products
+    : (Array.isArray(productsData) ? productsData : []);
+
+  // sellers endpoint may not exist yet – graceful fallback to []
+  const sellers = Array.isArray(sellersData) ? sellersData : [];
+
+  const sitemap = generateSiteMap(products, sellers);
+
+  res.setHeader('Content-Type', 'application/xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
   res.write(sitemap);
   res.end();
 
-  return {
-    props: {},
-  };
+  return { props: {} };
 }
 
 export default SiteMap;

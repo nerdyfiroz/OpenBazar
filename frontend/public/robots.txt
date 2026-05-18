@@ -1,15 +1,34 @@
+# robots.txt — OpenBazar
+# https://open-bazar.me
+
 User-agent: *
 Allow: /
-Allow: /category?category=Mango
-Allow: /category?category=
-Allow: /product/
 
-# Block admin, cart, checkout, and user-specific pages
+# High-value crawlable pages
+Allow: /category
+Allow: /product/
+Allow: /seller/
+Allow: /about
+Allow: /contact
+Allow: /become-seller
+
+# Block admin and private pages
 Disallow: /admin/
-Disallow: /cart
-Disallow: /checkout
-Disallow: /user/
-Disallow: /seller/dashboard
 Disallow: /api/
+Disallow: /user/
+Disallow: /checkout
+Disallow: /cart
+Disallow: /order-success
+Disallow: /track/
+Disallow: /login
+Disallow: /verify-email
+Disallow: /forgot-password
+
+# Block low-value filter URL combinations (prevent crawl budget waste)
+Disallow: /category?*minPrice=*
+Disallow: /category?*maxPrice=*
+Disallow: /category?*rating=*
+Disallow: /category?*trustedSeller=*
+Disallow: /category?*brand=*
 
 Sitemap: https://open-bazar.me/sitemap.xml

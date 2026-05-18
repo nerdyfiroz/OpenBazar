@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { getApiBase } from '../utils/apiBase';
 
 const StoreContext = createContext(null);
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+const API_BASE = getApiBase();
 
 export function StoreProvider({ children }) {
   const [user, setUser] = useState(null);

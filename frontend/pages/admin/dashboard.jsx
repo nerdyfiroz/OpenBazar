@@ -1,12 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
 import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import VerifiedBadge from '../../components/VerifiedBadge';
+import { useStore } from '../../components/StoreProvider';
+import { getApiBase } from '../../utils/apiBase';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+const API_BASE = getApiBase();
 const API_ORIGIN = API_BASE.replace(/\/api\/?$/, '');
 
 export default function AdminDashboard() {
+  const store = useStore();
   const [dashboard, setDashboard] = useState(null);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -44,11 +47,19 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [statusNote, setStatusNote] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  const token = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('token');
-  }, []);
+  const token = store?.token || (typeof window !== 'undefined'
+    ? (localStorage.getItem('ob_token') || localStorage.getItem('token'))
+    : null);
+
+  useEffect(() => {
+    // Fast path: if the store already knows the role.
+    const role = store?.user?.role;
+    if (role) {
+      setIsAdmin(role === 'admin');
+    }
+  }, [store?.user?.role]);
 
   const normalizeList = (payload, key) => {
     if (Array.isArray(payload)) return payload;
@@ -89,6 +100,13 @@ export default function AdminDashboard() {
       return;
     }
 
+    // Guard: prevent confusing “failed sections” when user is not an admin.
+    if (store?.user && store.user.role && store.user.role !== 'admin') {
+      setLoading(false);
+      setMessage('This account is not an admin. Please login with an admin account to access the admin dashboard.');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
 
@@ -96,11 +114,21 @@ export default function AdminDashboard() {
       const fetchJson = async (url, options = {}) => {
         try {
           const res = await fetch(url, options);
-          if (!res.ok) return { ok: false, data: null };
-          const data = await res.json();
-          return { ok: true, data };
+          const contentType = res.headers.get('content-type') || '';
+          const data = contentType.includes('application/json') ? await res.json() : null;
+
+          if (!res.ok) {
+            return {
+              ok: false,
+              status: res.status,
+              data: null,
+              message: (data && (data.message || data.error)) || `Request failed (${res.status})`
+            };
+          }
+
+          return { ok: true, status: res.status, data };
         } catch {
-          return { ok: false, data: null };
+          return { ok: false, status: 0, data: null, message: 'Network error' };
         }
       };
 
@@ -129,6 +157,9 @@ export default function AdminDashboard() {
       if (!flashSaleRes.ok) failedSections.push('flash sale');
       if (!couponRes.ok) failedSections.push('coupons');
 
+      const anyAuthError = [dashRes, productRes, orderRes, userRes, sellerAppRes, badgeReqRes, feeRes, couponRes, flashAppsRes]
+        .some((r) => r && !r.ok && (r.status === 401 || r.status === 403));
+
       setDashboard(dashRes.data || {
         totalOrders: 0,
         totalSellers: 0,
@@ -152,7 +183,9 @@ export default function AdminDashboard() {
       setCoupons(Array.isArray(couponRes.data) ? couponRes.data : []);
       setFlashSaleApps(Array.isArray(flashAppsRes.data?.applications) ? flashAppsRes.data.applications : []);
 
-      if (failedSections.length) {
+      if (anyAuthError) {
+        setMessage('You are not authorized to view admin data. Please login with an admin account.');
+      } else if (failedSections.length) {
         setMessage(`Some sections failed to load: ${failedSections.join(', ')}.`);
       }
     } catch (err) {
@@ -163,9 +196,15 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
+    if (!token) {
+      setLoading(false);
+      setMessage('Admin token not found. Please login as admin.');
+      return;
+    }
+
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [token, store?.user?.role]);
 
   const updateProduct = async (productId, updates) => {
     if (!token) return;

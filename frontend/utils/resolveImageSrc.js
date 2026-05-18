@@ -13,17 +13,11 @@
  *   Input  : "/uploads/products/fan.jpg"
  *   Output : "http://localhost:5000/uploads/products/fan.jpg"
  */
+import { getBackendOrigin } from './apiBase';
+
 export const FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1553456558-aff63285bdd1?w=800';
 // ↑ generic shopping bag — neutral placeholder
-
-function getBackendOrigin() {
-  const base =
-    (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_API_BASE) ||
-    'http://localhost:5000/api';
-  // Strip trailing /api or /api/ to get the bare origin
-  return base.replace(/\/api\/?$/, '').replace(/\/$/, '');
-}
 
 const BACKEND_ORIGIN = getBackendOrigin();
 

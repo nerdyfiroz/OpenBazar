@@ -3,8 +3,9 @@ import { useRouter } from 'next/router';
 import MarketplaceLayout from '../components/MarketplaceLayout';
 import { useStore } from '../components/StoreProvider';
 import SEO from '../components/SEO';
+import { getApiBase } from '../utils/apiBase';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+const API_BASE = getApiBase();
 
 export default function Login() {
   const router = useRouter();

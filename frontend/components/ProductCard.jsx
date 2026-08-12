@@ -1,22 +1,8 @@
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import dynamic from 'next/dynamic';
 import { useStore } from './StoreProvider';
 import { resolveImageSrc } from '../utils/resolveImageSrc';
 import VerifiedBadge from './VerifiedBadge';
 import SmartImage from './SmartImage';
-
-const MangoSelectionModal = dynamic(() => import('./MangoSelectionModal'), { ssr: false });
-
-// Renders children into document.body via a portal, bypassing any
-// CSS transform stacking context that would break position:fixed.
-function BodyPortal({ children }) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
-  if (!mounted) return null;
-  return createPortal(children, document.body);
-}
 
 function firstString(value) {
   if (!value) return '';
@@ -25,18 +11,15 @@ function firstString(value) {
     return v ? v.trim() : '';
   }
   if (typeof value === 'string') {
-    // Handle legacy "a.jpg,b.jpg" stored as a string
     const v = value.split(',').map((x) => x.trim()).find(Boolean);
     return v || '';
   }
-  // Some older payloads may use objects like { url: "..." }
   if (typeof value === 'object' && typeof value.url === 'string') return value.url.trim();
   return '';
 }
 
 export default function ProductCard({ product }) {
   const { addToCart, toggleWishlist, wishlist } = useStore();
-  const [showMangoModal, setShowMangoModal] = useState(false);
   const isWished = wishlist.some((item) => item._id === product._id);
   const hasDiscount = Number(product.discountPrice) > 0 && product.discountPrice < product.price;
   const imageSrc = resolveImageSrc(
@@ -90,7 +73,7 @@ export default function ProductCard({ product }) {
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={() => product.category === 'Mango' ? setShowMangoModal(true) : addToCart(product, 1)}
+            onClick={() => addToCart(product, 1)}
             className="flex-1 rounded-lg bg-orange-500 px-3 py-2 text-xs font-semibold text-white hover:bg-orange-600"
           >
             Add to Cart
@@ -103,18 +86,6 @@ export default function ProductCard({ product }) {
             ♥
           </button>
         </div>
-
-        {/* Portal ensures the modal renders at document.body level,
-            outside the card's CSS transform stacking context. */}
-        {showMangoModal && (
-          <BodyPortal>
-            <MangoSelectionModal
-              product={product}
-              onClose={() => setShowMangoModal(false)}
-              onAdd={(p, q) => addToCart(p, q)}
-            />
-          </BodyPortal>
-        )}
       </div>
     </article>
   );

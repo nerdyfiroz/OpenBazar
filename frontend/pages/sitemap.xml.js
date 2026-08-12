@@ -4,7 +4,6 @@ const FRONTEND_URL = (process.env.NEXT_PUBLIC_FRONTEND_URL || 'https://open-baza
 const TODAY = new Date().toISOString().split('T')[0];
 
 const CATEGORIES = [
-  'Mango',
   'Electronics',
   'Fashion',
   'Beauty',
@@ -46,12 +45,11 @@ function generateSiteMap(products, sellers) {
     }))
     .join('');
 
-  // Mango first (highest value), then the rest
   const categoryUrls = CATEGORIES.map((cat) => urlTag({
     loc: `${FRONTEND_URL}/category?category=${encodeURIComponent(cat)}`,
     lastmod: TODAY,
     changefreq: 'daily',
-    priority: cat === 'Mango' ? '0.95' : '0.75',
+    priority: '0.75',
   })).join('');
 
   const productUrls = products

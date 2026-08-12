@@ -106,30 +106,12 @@ export default function ProductDetails({ initialProduct = null, initialRelated =
 
   const handleAddToCart = (buyNow = false) => {
     if (!product) return;
-    if (product.category === 'Mango' && !selectedWeight) {
-      setAddedMsg('⚠️ Please select a weight');
-      setTimeout(() => setAddedMsg(''), 2000);
-      return;
-    }
-    const selectedWeightData = product.category === 'Mango'
-      ? mangoWeightPrices.find((wp) => wp.weight === selectedWeight)
-      : null;
-    
-    const weightPrice = selectedWeightData?.price || null;
-
-    // Calculate effective unit price for cart
-    let unitPrice = weightPrice ?? (product.discountPrice ?? product.price);
-    
-    // If it's a mango and we have a discount on the base product, apply it to the weight price too?
-    if (product.category === 'Mango' && weightPrice && product.salePercent > 0) {
-      unitPrice = Number((weightPrice * (1 - product.salePercent / 100)).toFixed(2));
-    }
+    const unitPrice = product.discountPrice ?? product.price;
     
     addToCart({ 
       ...product, 
       selectedColor, 
       selectedSize, 
-      selectedWeight,
       unitPrice
     }, quantity);
     setAddedMsg('✓ Added to cart!');
@@ -142,60 +124,21 @@ export default function ProductDetails({ initialProduct = null, initialRelated =
   const isOutOfStock = stockLeft <= 0;
   const maxQty = Math.min(stockLeft, 10);
 
-  const mangoWeightPrices = useMemo(() => {
-    if (!product || product.category !== 'Mango') return [];
-    const raw = Array.isArray(product.weightPrices) ? product.weightPrices : [];
-    if (raw.length) return raw;
-
-    // Legacy fallback: treat product.price as "price per kg"
-    const basePerKg = Number(product.price || 0);
-    if (!Number.isFinite(basePerKg) || basePerKg <= 0) return [];
-    return [5, 10, 15, 20, 30, 40].map((kg) => ({
-      weight: `${kg}kg`,
-      price: basePerKg * kg
-    }));
-  }, [product]);
-
   const images = (product?.images?.length ? product.images : product?.photos || []).filter(Boolean);
   const colors = product?.colors?.filter(Boolean) || [];
   const sizes = product?.sizes?.filter(Boolean) || [];
 
   const siteUrl = getSiteUrl();
   const canonical = product?._id ? `${siteUrl}/product/${product._id}` : `${siteUrl}/product/${id || ''}`;
-  const isMango = product?.category === 'Mango';
 
-  // Mango products get keyword-rich titles and descriptions
-  const title = isMango
-    ? `Buy ${product.name} Online | Fresh Mango Bangladesh`
-    : (product?.name || 'Product');
-
-  const description = isMango
-    ? `Order ${product.name} online in Bangladesh. Farm-fresh mango delivered to your door — bulk packs available, ৳10/kg delivery. Verified seller on OpenBazar.`
-    : (product?.description
-      ? String(product.description).slice(0, 160)
-      : 'Shop this product on OpenBazar. Verified sellers, secure payments, and fast delivery.');
-
-  const productKeywords = isMango
-    ? `${product.name}, buy mango online Bangladesh, fresh mango delivery, আম কিনুন, summer mango sale, Rajshahi mango, Chapai mango, farm fresh mango Bangladesh, OpenBazar mango`
-    : undefined;
+  const title = product?.name || 'Product';
+  const description = product?.description
+    ? String(product.description).slice(0, 160)
+    : 'Shop this product on OpenBazar. Verified sellers, secure payments, and fast delivery.';
 
   const ogImage = resolveImageSrc(images?.[0]);
-
   const offerPrice = Number(product?.discountPrice ?? product?.price ?? 0);
   const currency = 'BDT';
-
-  // Build weight-based variant offers for mango products
-  const weightOffers = isMango && mangoWeightPrices.length
-    ? mangoWeightPrices.map((wp) => ({
-        '@type': 'Offer',
-        name: `${product.name} — ${wp.weight}`,
-        url: canonical,
-        priceCurrency: currency,
-        price: Number(wp.price),
-        availability: 'https://schema.org/InStock',
-        description: `Fresh mango — ${wp.weight} pack, delivered anywhere in Bangladesh.`
-      }))
-    : null;
 
   const jsonLd = product ? [
     {
@@ -203,12 +146,7 @@ export default function ProductDetails({ initialProduct = null, initialRelated =
       '@type': 'BreadcrumbList',
       itemListElement: [
         { '@type': 'ListItem', position: 1, name: 'Home', item: siteUrl },
-        ...(isMango ? [
-          { '@type': 'ListItem', position: 2, name: 'Mango', item: `${siteUrl}/category?category=Mango` },
-          { '@type': 'ListItem', position: 3, name: product.name, item: canonical }
-        ] : [
-          { '@type': 'ListItem', position: 2, name: 'Product', item: canonical }
-        ])
+        { '@type': 'ListItem', position: 2, name: 'Product', item: canonical }
       ]
     },
     {
@@ -219,16 +157,14 @@ export default function ProductDetails({ initialProduct = null, initialRelated =
       image: images.length ? images.map((img) => resolveImageSrc(img)) : [resolveImageSrc(null)],
       sku: String(product._id),
       brand: product.brand ? { '@type': 'Brand', name: product.brand } : undefined,
-      category: isMango ? 'Mango, Fresh Fruit, Summer Fruit, Bangladesh Mango' : (product.category || undefined),
-      keywords: isMango ? `fresh mango, buy mango online, ${product.name}, Bangladesh mango` : undefined,
-      offers: weightOffers
-        ? { '@type': 'AggregateOffer', lowPrice: Math.min(...mangoWeightPrices.map(w => w.price)), highPrice: Math.max(...mangoWeightPrices.map(w => w.price)), priceCurrency: currency, offerCount: weightOffers.length, offers: weightOffers, availability: 'https://schema.org/InStock' }
-        : { '@type': 'Offer', url: canonical, priceCurrency: currency, price: Number.isFinite(offerPrice) ? offerPrice : 0, availability: (Number(product?.stock ?? 1) <= 0) ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock' },
-      aggregateRating: (product.numReviews && Number(product.numReviews) > 0) ? {
-        '@type': 'AggregateRating',
-        ratingValue: Number(product.rating || 0),
-        reviewCount: Number(product.numReviews || 0)
-      } : undefined
+      category: product.category || undefined,
+      offers: {
+        '@type': 'Offer',
+        price: offerPrice,
+        priceCurrency: currency,
+        availability: isOutOfStock ? 'https://schema.org/OutOfStock' : 'https://schema.org/InStock',
+        url: canonical
+      }
     }
   ] : null;
 
@@ -313,18 +249,8 @@ export default function ProductDetails({ initialProduct = null, initialRelated =
             <div className="mt-4 flex items-end gap-3">
               <div className="flex flex-col">
                 <p className="text-4xl font-black text-orange-500">
-                  ৳{product.category === 'Mango' && selectedWeight 
-                    ? (product.salePercent > 0 
-                        ? (Number(mangoWeightPrices.find((wp) => wp.weight === selectedWeight)?.price || 0) * (1 - product.salePercent / 100)).toFixed(0)
-                        : Number(mangoWeightPrices.find((wp) => wp.weight === selectedWeight)?.price || 0).toFixed(0))
-                    : effectivePrice.toFixed(0)}
-                  {product.category === 'Mango' && !selectedWeight && <span className="text-sm font-normal text-slate-400 ml-2">(Select weight)</span>}
+                  ৳{effectivePrice.toFixed(0)}
                 </p>
-                {product.category === 'Mango' && selectedWeight && product.salePercent > 0 && (
-                  <p className="text-sm text-slate-400 line-through">
-                    ৳{Number(mangoWeightPrices.find((wp) => wp.weight === selectedWeight)?.price || 0).toFixed(0)}
-                  </p>
-                )}
               </div>
               {product.salePercent > 0 && (
                 <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-600 mb-1">
@@ -345,21 +271,6 @@ export default function ProductDetails({ initialProduct = null, initialRelated =
             </div>
 
             <p className="mt-4 text-sm leading-relaxed text-slate-600">{product.description}</p>
-
-            {/* Color selector */}
-            {product.category === 'Mango' && mangoWeightPrices?.length > 0 && (
-              <div className="mt-4">
-                <p className="mb-2 text-sm font-semibold text-orange-700 font-bold uppercase tracking-wide">Select Weight</p>
-                <div className="flex flex-wrap gap-2">
-                  {mangoWeightPrices.map((wp) => (
-                    <button key={wp.weight} onClick={() => setSelectedWeight(wp.weight)}
-                      className={`rounded-xl border-2 px-4 py-2 text-sm font-black transition ${selectedWeight === wp.weight ? 'border-orange-500 bg-orange-500 text-white shadow-lg' : 'border-slate-200 bg-white hover:border-orange-300'}`}>
-                      {wp.weight} - ৳{Number(wp.price).toFixed(0)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {colors.length > 0 && (
               <div className="mt-4">

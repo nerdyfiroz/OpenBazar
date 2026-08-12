@@ -37,16 +37,6 @@ export default function Checkout() {
   const districtOptions = useMemo(() => getDistrictOptions(form.division), [form.division]);
   const upazilaOptions = useMemo(() => getUpazilaOptions(form.district), [form.district]);
   const unionOptions = useMemo(() => getUnionOptions(form.upazila), [form.upazila]);
-  const totalMangoKg = useMemo(() => (
-    cart
-      .filter((item) => item.category === 'Mango')
-      .reduce((sum, item) => {
-        const weightMatch = item.selectedWeight?.match(/(\d+)/);
-        const weightKg = weightMatch ? Number(weightMatch[1]) : 0;
-        return sum + (weightKg * Number(item.quantity || 0));
-      }, 0)
-  ), [cart]);
-  const regularItemsCount = useMemo(() => cart.filter(item => item.category !== 'Mango').reduce((sum, item) => sum + Number(item.quantity || 0), 0), [cart]);
   const totalItems = useMemo(() => cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0), [cart]);
 
   const effectiveUser = user || null;
@@ -67,14 +57,11 @@ export default function Checkout() {
   }, [cart.length]);
 
   const baseDeliveryCharge = useMemo(() => (
-    regularItemsCount > 0 ? (String(form.division || '').trim().toLowerCase() === 'dhaka' ? 70 : 120) : 0
-  ), [form.division, regularItemsCount]);
+    totalItems > 0 ? (String(form.division || '').trim().toLowerCase() === 'dhaka' ? 70 : 120) : 0
+  ), [form.division, totalItems]);
   
-  const deliveryDiscountRate = regularItemsCount >= 4 ? 1 : regularItemsCount >= 3 ? 0.7 : 0;
-  
-  const mangoDeliveryCharge = totalMangoKg * 10;
-  const regularDeliveryCharge = useMemo(() => Number((baseDeliveryCharge * (1 - deliveryDiscountRate)).toFixed(2)), [baseDeliveryCharge, deliveryDiscountRate]);
-  const deliveryCharge = regularDeliveryCharge + mangoDeliveryCharge;
+  const deliveryDiscountRate = totalItems >= 4 ? 1 : totalItems >= 3 ? 0.7 : 0;
+  const deliveryCharge = useMemo(() => Number((baseDeliveryCharge * (1 - deliveryDiscountRate)).toFixed(2)), [baseDeliveryCharge, deliveryDiscountRate]);
   
   const total = useMemo(() => Math.max(0, subtotal - couponDiscount + deliveryCharge), [subtotal, couponDiscount, deliveryCharge]);
 
@@ -86,11 +73,6 @@ export default function Checkout() {
 
     if (!cart.length) {
       setMessage('Cart is empty.');
-      return;
-    }
-
-    if (totalMangoKg > 0 && (totalMangoKg < 5 || totalMangoKg > 40)) {
-      setMessage(`Mango orders must be between 5 kg and 40 kg. Currently: ${totalMangoKg} kg.`);
       return;
     }
 
@@ -337,20 +319,18 @@ export default function Checkout() {
         <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-4 md:p-6">
           <h2 className="text-lg font-bold">Payable Summary</h2>
           <p className="mt-2 text-xs text-slate-600">
-            {regularItemsCount > 0 ? (
-              regularItemsCount >= 4
-                ? '4+ regular items: 100% regular delivery discount applied.'
-                : regularItemsCount >= 3
-                  ? '3 regular items: 70% regular delivery discount applied.'
-                  : 'Buy at least 3 regular items to get a delivery discount.'
-            ) : 'No regular items.'}
-            {totalMangoKg > 0 && ` Mango delivery charge: ৳10/kg (${totalMangoKg} kg = ৳${mangoDeliveryCharge}).`}
+            {totalItems > 0 ? (
+              totalItems >= 4
+                ? '4+ items: 100% delivery discount applied.'
+                : totalItems >= 3
+                  ? '3 items: 70% delivery discount applied.'
+                  : 'Buy at least 3 items to get a delivery discount.'
+            ) : 'Cart is empty.'}
           </p>
           <div className="mt-3 space-y-2 text-sm">
             <p className="flex justify-between"><span>Subtotal</span><span>৳{subtotal.toFixed(2)}</span></p>
-            {regularItemsCount > 0 && <p className="flex justify-between"><span>Regular Base Delivery</span><span>৳{baseDeliveryCharge.toFixed(2)}</span></p>}
-            {regularItemsCount > 0 && deliveryDiscountRate > 0 && <p className="flex justify-between text-green-600"><span>Regular Delivery Discount</span><span>-৳{(baseDeliveryCharge - regularDeliveryCharge).toFixed(2)}</span></p>}
-            {totalMangoKg > 0 && <p className="flex justify-between"><span>Mango Delivery (৳10/kg)</span><span>৳{mangoDeliveryCharge.toFixed(2)}</span></p>}
+            {totalItems > 0 && <p className="flex justify-between"><span>Base Delivery</span><span>৳{baseDeliveryCharge.toFixed(2)}</span></p>}
+            {totalItems > 0 && deliveryDiscountRate > 0 && <p className="flex justify-between text-green-600"><span>Delivery Discount</span><span>-৳{(baseDeliveryCharge - deliveryCharge).toFixed(2)}</span></p>}
             <p className="flex justify-between"><span>Total Delivery</span><span>{deliveryCharge === 0 ? 'Free' : `৳${deliveryCharge.toFixed(2)}`}</span></p>
             {couponDiscount > 0 && <p className="flex justify-between text-green-600"><span>Coupon</span><span>-৳{couponDiscount.toFixed(2)}</span></p>}
             <p className="flex justify-between border-t pt-2 font-bold"><span>Total</span><span>৳{total.toFixed(2)}</span></p>

@@ -1,14 +1,14 @@
 {
   "name": "OpenBazar — Online Marketplace Bangladesh",
   "short_name": "OpenBazar",
-  "description": "Buy fresh mangoes, electronics, fashion & more from verified sellers in Bangladesh.",
+  "description": "Buy electronics, fashion, beauty & more from verified sellers in Bangladesh.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#f97316",
   "orientation": "portrait-primary",
   "lang": "en-BD",
-  "categories": ["shopping", "food"],
+  "categories": ["shopping"],
   "icons": [
     {
       "src": "/api/logo",
@@ -24,13 +24,6 @@
     }
   ],
   "shortcuts": [
-    {
-      "name": "Buy Mangoes",
-      "short_name": "Mango",
-      "description": "Shop fresh mangoes",
-      "url": "/category?category=Mango",
-      "icons": [{ "src": "/api/logo", "sizes": "96x96" }]
-    },
     {
       "name": "All Products",
       "short_name": "Shop",

@@ -21,30 +21,13 @@ export default function Cart() {
 
   const [deliveryArea, setDeliveryArea] = useState('dhaka');
 
-  const totalMangoKg = cart
-    .filter((item) => item.category === 'Mango')
-    .reduce((sum, item) => {
-      const weightMatch = item.selectedWeight?.match(/(\d+)/);
-      const weightKg = weightMatch ? Number(weightMatch[1]) : 0;
-      return sum + (weightKg * Number(item.quantity || 0));
-    }, 0);
-  const regularItemsCount = cart.filter(item => item.category !== 'Mango').reduce((sum, item) => sum + Number(item.quantity || 0), 0);
   const totalItems = cart.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
 
-  const baseDeliveryCharge = regularItemsCount > 0 ? (deliveryArea === 'dhaka' ? 70 : 120) : 0;
-  const deliveryDiscountRate = regularItemsCount >= 4 ? 1 : regularItemsCount >= 3 ? 0.7 : 0;
-  
-  const mangoDeliveryCharge = cart.filter(item => item.category === 'Mango').reduce((sum, item) => {
-    // Extract number from "5kg", "10kg" etc
-    const weightMatch = item.selectedWeight?.match(/(\d+)/);
-    const weightValue = weightMatch ? parseInt(weightMatch[1]) : 0;
-    return sum + (weightValue * 10 * item.quantity);
-  }, 0);
-  const regularDeliveryCharge = Number((baseDeliveryCharge * (1 - deliveryDiscountRate)).toFixed(2));
-  const deliveryCharge = regularDeliveryCharge + mangoDeliveryCharge;
+  const baseDeliveryCharge = totalItems > 0 ? (deliveryArea === 'dhaka' ? 70 : 120) : 0;
+  const deliveryDiscountRate = totalItems >= 4 ? 1 : totalItems >= 3 ? 0.7 : 0;
+  const deliveryCharge = Number((baseDeliveryCharge * (1 - deliveryDiscountRate)).toFixed(2));
 
   const total = subtotal - couponDiscount + deliveryCharge;
-  const mangoError = totalMangoKg > 0 && (totalMangoKg < 5 || totalMangoKg > 40) ? `Mango orders must be between 5 kg and 40 kg. Currently: ${totalMangoKg} kg.` : null;
 
   return (
     <MarketplaceLayout>
@@ -127,26 +110,20 @@ export default function Cart() {
               <option value="outside">Outside Dhaka (৳120)</option>
             </select>
             <p className="mt-2 text-xs text-slate-600">
-              {regularItemsCount > 0 ? (
-                regularItemsCount >= 4
-                  ? '4+ regular items: 100% regular delivery discount applied.'
-                  : regularItemsCount >= 3
-                    ? '3 regular items: 70% regular delivery discount applied.'
-                    : 'Buy at least 3 regular items to get a delivery discount.'
-              ) : 'No regular items.'}
-              {totalMangoKg > 0 && ` Mango delivery charge: ৳10/kg (Total weight-based charge: ৳${mangoDeliveryCharge}).`}
+              {totalItems > 0 ? (
+                totalItems >= 4
+                  ? '4+ items: 100% delivery discount applied.'
+                  : totalItems >= 3
+                    ? '3 items: 70% delivery discount applied.'
+                    : 'Buy at least 3 items to get a delivery discount.'
+              ) : 'Cart is empty.'}
             </p>
           </div>
-          {mangoError && (
-            <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600">
-              {mangoError}
-            </div>
-          )}
+
           <div className="mt-3 space-y-2 text-sm">
             <p className="flex justify-between"><span>Subtotal</span><span>৳{subtotal.toFixed(2)}</span></p>
-            {regularItemsCount > 0 && <p className="flex justify-between"><span>Regular Base Delivery</span><span>৳{baseDeliveryCharge.toFixed(2)}</span></p>}
-            {regularItemsCount > 0 && deliveryDiscountRate > 0 && <p className="flex justify-between text-green-600"><span>Regular Delivery Discount</span><span>-৳{(baseDeliveryCharge - regularDeliveryCharge).toFixed(2)}</span></p>}
-            {totalMangoKg > 0 && <p className="flex justify-between"><span>Mango Delivery (৳10/kg)</span><span>৳{mangoDeliveryCharge.toFixed(2)}</span></p>}
+            {totalItems > 0 && <p className="flex justify-between"><span>Base Delivery</span><span>৳{baseDeliveryCharge.toFixed(2)}</span></p>}
+            {totalItems > 0 && deliveryDiscountRate > 0 && <p className="flex justify-between text-green-600"><span>Delivery Discount</span><span>-৳{(baseDeliveryCharge - deliveryCharge).toFixed(2)}</span></p>}
             <p className="flex justify-between"><span>Total Delivery</span><span>{deliveryCharge === 0 ? 'Free' : `৳${deliveryCharge.toFixed(2)}`}</span></p>
             {couponDiscount > 0 && <p className="flex justify-between text-green-600"><span>Coupon Discount</span><span>-৳{couponDiscount.toFixed(2)}</span></p>}
             <p className="flex justify-between border-t pt-2 font-bold"><span>Total</span><span>৳{Math.max(0, total).toFixed(2)}</span></p>
@@ -161,7 +138,7 @@ export default function Cart() {
             onClearCoupon={clearCoupon}
           />
 
-          <Link href={mangoError ? '#' : '/checkout'} className={`mt-4 block rounded-xl bg-orange-500 px-4 py-3 text-center text-sm font-semibold text-white ${mangoError ? 'pointer-events-none opacity-50' : 'hover:bg-orange-600'}`}>Proceed to Checkout</Link>
+          <Link href="/checkout" className="mt-4 block rounded-xl bg-orange-500 px-4 py-3 text-center text-sm font-semibold text-white hover:bg-orange-600">Proceed to Checkout</Link>
         </aside>
       </main>
     </MarketplaceLayout>

@@ -22,20 +22,11 @@ const SHOP_CATEGORIES = [
   { label: 'Toys', emoji: '🧸', color: 'from-yellow-400 to-amber-400' },
   { label: 'Grocery', emoji: '🛒', color: 'from-lime-500 to-green-500' },
   { label: 'Food', emoji: '🍔', color: 'from-rose-400 to-pink-500' },
-  { label: 'Mango', emoji: '🥭', color: 'from-amber-400 to-orange-500' },
 ];
 
 const BANNERS = [
   {
-    title: '🥭 Special Summer Mango Festival',
-    subtitle: 'Farm fresh mangoes, 10kg to 40kg. Special ৳10/kg delivery!',
-    badge: '🌞 Summer Special',
-    cta: 'Shop Mangoes',
-    href: '/category?category=Mango',
-    bg: 'from-amber-400 via-orange-500 to-rose-500',
-  },
-  {
-    title: "Bangladesh's Favorite Marketplace",
+    title: "Bangladesh's Favorite Online Marketplace",
     subtitle: 'Up to 70% off on electronics, fashion, beauty & more.',
     badge: '🎉 Mega Campaign',
     cta: 'Shop Now',
@@ -187,17 +178,6 @@ export default function Home({
       '@context': 'https://schema.org',
       '@type': 'Organization',
       name: 'OpenBazar',
-      url: siteUrl,
-      logo: `${siteUrl}/api/logo`,
-      email: 'support@open-bazar.me',
-      address: {
-        '@type': 'PostalAddress',
-        addressLocality: 'Dhaka',
-        addressCountry: 'BD'
-      }
-    },
-    {
-      '@context': 'https://schema.org',
       '@type': 'WebSite',
       name: 'OpenBazar',
       url: siteUrl,
@@ -209,56 +189,22 @@ export default function Home({
     },
     {
       '@context': 'https://schema.org',
-      '@type': 'SaleEvent',
-      name: 'Summer Mango Festival 2025',
-      description: 'Buy fresh farm mangoes online — 10kg to 40kg packs with special ৳10/kg delivery across Bangladesh. Limited summer offer on OpenBazar.',
-      startDate: '2025-04-01',
-      endDate: '2025-08-31',
-      eventStatus: 'https://schema.org/EventScheduled',
-      eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
-      location: {
-        '@type': 'VirtualLocation',
-        url: `${siteUrl}/category?category=Mango`
-      },
-      organizer: {
-        '@type': 'Organization',
-        name: 'OpenBazar',
-        url: siteUrl
-      },
-      offers: {
-        '@type': 'Offer',
-        url: `${siteUrl}/category?category=Mango`,
-        priceCurrency: 'BDT',
-        availability: 'https://schema.org/InStock',
-        description: 'Fresh mangoes from ৳10/kg delivery. Minimum order 10kg.'
-      }
-    },
-    {
-      '@context': 'https://schema.org',
       '@type': 'FAQPage',
       mainEntity: [
         {
           '@type': 'Question',
-          name: 'Where can I buy fresh mangoes online in Bangladesh?',
+          name: 'What is OpenBazar?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'You can buy fresh mangoes directly from verified farmers and sellers on OpenBazar. We offer farm-fresh Rajshahi, Chapai, Langra, Himsagar and Fazli mangoes with nationwide delivery.'
+            text: 'OpenBazar is Bangladesh-first online marketplace connecting verified sellers and buyers for electronics, fashion, beauty, groceries and home goods.'
           }
         },
         {
           '@type': 'Question',
-          name: 'What is the delivery charge for mangoes on OpenBazar?',
+          name: 'How does nationwide delivery work on OpenBazar?',
           acceptedAnswer: {
             '@type': 'Answer',
-            text: 'Mango delivery is available at a special summer rate of ৳10 per kg. For a 10kg pack the delivery cost is ৳100, for 20kg it is ৳200, and so on.'
-          }
-        },
-        {
-          '@type': 'Question',
-          name: 'Can I buy mangoes in bulk online from Bangladesh?',
-          acceptedAnswer: {
-            '@type': 'Answer',
-            text: 'Yes! OpenBazar lets you buy mangoes in bulk packs of 10kg, 15kg, 20kg, 30kg and 40kg directly from farm-to-door verified sellers at the best prices.'
+            text: 'Delivery is ৳70 within Dhaka and ৳120 outside Dhaka. Orders with 4+ items receive 100% free delivery.'
           }
         }
       ]
@@ -268,11 +214,10 @@ export default function Home({
   return (
     <MarketplaceLayout>
       <SEO
-        title="Buy Mango Online Bangladesh | Summer Mango Sale 2025"
-        description="Shop fresh farm mangoes online in Bangladesh — 10kg to 40kg, ৳10/kg delivery. Also find electronics, fashion, beauty & groceries from verified sellers on OpenBazar. Summer sale on now!"
+        title="OpenBazar — Online Shopping Marketplace in Bangladesh"
+        description="Shop electronics, fashion, beauty, home & groceries from verified sellers on OpenBazar. Secure payments & fast nationwide delivery across Bangladesh."
         canonical="/"
         jsonLd={homeJsonLd}
-        keywords="buy mango online Bangladesh, fresh mango delivery, summer mango sale, আম কিনুন অনলাইন, আম ডেলিভারি বাংলাদেশ, mango festival Bangladesh, Rajshahi mango buy, Chapai mango online, আমের দাম, সেরা আম কোথায় পাওয়া যায়, OpenBazar mango, online marketplace Bangladesh"
       />
       {/* ── Hero Banner Carousel ── */}
       <section className="mx-auto max-w-7xl grid gap-4 px-4 py-6 md:grid-cols-[1fr_280px] md:px-6">
@@ -298,11 +243,11 @@ export default function Home({
       {/* ── Marquee trust bar ── */}
       <div className="overflow-hidden border-y border-slate-100 bg-white py-2 text-xs text-slate-500">
         <div className="animate-marquee flex gap-16 whitespace-nowrap px-4">
-          {['🚚 Fast Nationwide Delivery', '🥭 Summer Mango Festival - ৳10/kg Delivery!', '🔒 Secure Payments', '💯 100% Authentic Products', '↩️ 3-Day Easy Returns', '🎁 Free Delivery on 4+ Items', '⭐ 50,000+ Happy Customers', '🏪 Trusted Sellers Only'].map((t) => (
+          {['🚚 Fast Nationwide Delivery', '🔒 Secure Payments', '💯 100% Authentic Products', '↩️ 3-Day Easy Returns', '🎁 Free Delivery on 4+ Items', '⭐ 50,000+ Happy Customers', '🏪 Trusted Sellers Only'].map((t) => (
             <span key={t}>{t}</span>
           ))}
           {/* Duplicate for seamless loop */}
-          {['🚚 Fast Nationwide Delivery', '🥭 Summer Mango Festival - ৳10/kg Delivery!', '🔒 Secure Payments', '💯 100% Authentic Products', '↩️ 3-Day Easy Returns', '🎁 Free Delivery on 4+ Items', '⭐ 50,000+ Happy Customers', '🏪 Trusted Sellers Only'].map((t) => (
+          {['🚚 Fast Nationwide Delivery', '🔒 Secure Payments', '💯 100% Authentic Products', '↩️ 3-Day Easy Returns', '🎁 Free Delivery on 4+ Items', '⭐ 50,000+ Happy Customers', '🏪 Trusted Sellers Only'].map((t) => (
             <span key={`dup-${t}`}>{t}</span>
           ))}
         </div>

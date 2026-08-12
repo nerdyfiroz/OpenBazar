@@ -6,7 +6,7 @@ import SmartImage from '../../components/SmartImage';
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 const CATEGORIES = [
   'Electronics', 'Fashion', 'Beauty', 'Home & Living',
-  'Sports', 'Toys', 'Grocery', 'Food', 'Mango'
+  'Sports', 'Toys', 'Grocery', 'Food'
 ];
 
 const blankForm = {
@@ -446,47 +446,12 @@ export default function SellerDashboard() {
                 </select>
               </div>
 
-              {form.category === 'Mango' && (
-                <div className="md:col-span-2 rounded-xl bg-orange-50 p-4 border border-orange-100">
-                  <p className="mb-3 text-sm font-bold text-orange-700">🥭 Mango Weight-wise Pricing</p>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {['5kg', '10kg', '15kg', '20kg', '30kg', '40kg'].map((w) => {
-                      const existing = form.weightPrices.find(wp => wp.weight === w);
-                      return (
-                        <div key={w} className="flex items-center gap-2">
-                          <span className="w-12 text-sm font-bold text-slate-600">{w}</span>
-                          <input
-                            type="number"
-                            className="input text-sm bg-slate-50 cursor-not-allowed"
-                            placeholder="Auto-calculated"
-                            value={existing?.price || ''}
-                            readOnly
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <p className="mt-2 text-[10px] text-orange-500 italic">* Buyers will select one of these weights on the product page.</p>
-                </div>
-              )}
-
               <Field 
-                label={form.category === 'Mango' ? "Base Price (Price per Kg) (৳)" : "Base Price (৳)"} 
+                label="Base Price (৳)" 
                 type="number" 
                 min="0" 
                 value={form.price} 
-                onChange={(v) => {
-                  setF('price', v);
-                  if (form.category === 'Mango' && v) {
-                    const base = Number(v);
-                    const weights = [5, 10, 15, 20, 30, 40];
-                    const nextWeights = weights.map(w => ({
-                      weight: `${w}kg`,
-                      price: base * w
-                    }));
-                    setF('weightPrices', nextWeights);
-                  }
-                }} 
+                onChange={(v) => setF('price', v)}
                 required 
               />
 

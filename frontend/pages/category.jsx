@@ -103,9 +103,7 @@ export default function Category({ initialProducts = [], initialLoading = true, 
         }] : [])
       ]
     }
-      }] : [])
-    ]
-  };
+  ];
 
   return (
     <MarketplaceLayout>

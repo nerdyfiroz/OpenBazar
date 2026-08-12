@@ -5,6 +5,7 @@ import { useStore } from '../components/StoreProvider';
 import { resolveImageSrc } from '../utils/resolveImageSrc';
 import SmartImage from '../components/SmartImage';
 import SEO from '../components/SEO';
+import SmartCouponSection from '../components/SmartCouponSection';
 
 export default function Cart() {
   const {
@@ -151,7 +152,14 @@ export default function Cart() {
             <p className="flex justify-between border-t pt-2 font-bold"><span>Total</span><span>৳{Math.max(0, total).toFixed(2)}</span></p>
           </div>
 
-          <CouponBox applyCoupon={applyCoupon} coupon={coupon} clearCoupon={clearCoupon} totalItems={totalItems} />
+          <SmartCouponSection
+            subtotal={subtotal}
+            totalItems={totalItems}
+            appliedCoupon={coupon}
+            couponDiscount={couponDiscount}
+            onApplyCoupon={applyCoupon}
+            onClearCoupon={clearCoupon}
+          />
 
           <Link href={mangoError ? '#' : '/checkout'} className={`mt-4 block rounded-xl bg-orange-500 px-4 py-3 text-center text-sm font-semibold text-white ${mangoError ? 'pointer-events-none opacity-50' : 'hover:bg-orange-600'}`}>Proceed to Checkout</Link>
         </aside>
@@ -160,38 +168,3 @@ export default function Cart() {
   );
 }
 
-function CouponBox({ applyCoupon, coupon, clearCoupon, totalItems }) {
-  return (
-    <div className="mt-4 rounded-xl border border-slate-200 p-3 text-sm">
-      <p className="mb-2 font-semibold">Apply Coupon</p>
-      {coupon ? (
-        <div className="flex items-center justify-between">
-          <p className="text-green-600">{coupon.code} applied</p>
-          <button type="button" className="text-rose-500" onClick={clearCoupon}>Remove</button>
-        </div>
-      ) : (
-        <CouponForm applyCoupon={applyCoupon} totalItems={totalItems} />
-      )}
-    </div>
-  );
-}
-
-function CouponForm({ applyCoupon, totalItems }) {
-  const [code, setCode] = useState('');
-  const [msg, setMsg] = useState('');
-
-  return (
-    <form
-      onSubmit={async (e) => {
-        e.preventDefault();
-        const res = await applyCoupon(code, totalItems);
-        setMsg(res.message);
-      }}
-      className="space-y-2"
-    >
-      <input value={code} onChange={(e) => setCode(e.target.value)} className="input" placeholder="MEGA10 / EID150" />
-      {msg && <p className="text-xs text-slate-500">{msg}</p>}
-      <button type="submit" className="w-full rounded-lg bg-slate-900 px-3 py-2 text-white">Apply</button>
-    </form>
-  );
-}

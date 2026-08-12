@@ -6,6 +6,9 @@ const router = express.Router();
 
 router.post('/validate', ctrl.validateCoupon);
 
+// Public: list active coupons for cart eligibility UI (safe fields only)
+router.get('/public', ctrl.listPublicCoupons);
+
 router.get('/admin/all', authenticate, authorize(['admin']), ctrl.listCoupons);
 router.post('/admin', authenticate, authorize(['admin']), ctrl.createCoupon);
 router.put('/admin/:id', authenticate, authorize(['admin']), ctrl.updateCoupon);

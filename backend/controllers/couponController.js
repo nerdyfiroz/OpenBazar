@@ -227,4 +227,26 @@ exports.deleteCoupon = async (req, res) => {
   }
 };
 
+/**
+ * Public endpoint — safe fields only, no admin data.
+ * Returns active, not-yet-expired coupons for the cart eligibility UI.
+ */
+exports.listPublicCoupons = async (req, res) => {
+  try {
+    const now = new Date();
+    const coupons = await Coupon.find({
+      isActive: true,
+      startsAt: { $lte: now },
+      expiresAt: { $gt: now },
+    })
+      .select('code type value maxDiscount minOrderAmount minItemCount expiresAt')
+      .sort({ minOrderAmount: 1 })
+      .lean();
+
+    return res.json(coupons);
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error' });
+  }
+};
+
 module.exports.validateCouponDoc = validateCouponDoc;

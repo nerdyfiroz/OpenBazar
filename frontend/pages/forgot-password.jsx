@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import MarketplaceLayout from '../components/MarketplaceLayout';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+import PremiumPasswordInput from '../components/PremiumPasswordInput';
+import { getApiBase } from '../utils/apiBase';
+const API_BASE = getApiBase();
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -141,21 +142,23 @@ export default function ForgotPasswordPage() {
                 onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required
               />
-              <input
-                className="input"
-                type="password"
-                placeholder="New Password"
+              <PremiumPasswordInput
+                id="forgot-new-password"
+                label="New Password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
+                showStrength={true}
                 required
+                autoComplete="new-password"
               />
-              <input
-                className="input"
-                type="password"
-                placeholder="Confirm New Password"
+              <PremiumPasswordInput
+                id="forgot-confirm-password"
+                label="Confirm New Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
+                showStrength={false}
                 required
+                autoComplete="new-password"
               />
 
               <button

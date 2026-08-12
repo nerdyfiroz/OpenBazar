@@ -6,8 +6,9 @@ import { useStore } from '../../components/StoreProvider';
 import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import SmartImage from '../../components/SmartImage';
 import SEO from '../../components/SEO';
-
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+import PremiumPasswordInput from '../../components/PremiumPasswordInput';
+import { getApiBase } from '../../utils/apiBase';
+const API_BASE = getApiBase();
 
 const TABS = [
   { key: 'profile', label: '👤 Profile' },
@@ -209,18 +210,42 @@ export default function UserDashboard() {
             <form onSubmit={changePassword} className="grid max-w-md gap-4">
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">Current Password</span>
-                <input type="password" className="input" value={pwForm.currentPassword}
-                  onChange={(e) => setPwForm((p) => ({ ...p, currentPassword: e.target.value }))} required />
+                <PremiumPasswordInput
+                  id="sec-current-password"
+                  label="Current Password"
+                  value={pwForm.currentPassword}
+                  onChange={(e) => setPwForm((p) => ({ ...p, currentPassword: e.target.value }))}
+                  showStrength={false}
+                  required
+                  autoComplete="current-password"
+                  name="currentPassword"
+                />
               </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">New Password</span>
-                <input type="password" className="input" value={pwForm.newPassword} minLength={6}
-                  onChange={(e) => setPwForm((p) => ({ ...p, newPassword: e.target.value }))} required />
+                <PremiumPasswordInput
+                  id="sec-new-password"
+                  label="New Password"
+                  value={pwForm.newPassword}
+                  onChange={(e) => setPwForm((p) => ({ ...p, newPassword: e.target.value }))}
+                  showStrength={true}
+                  required
+                  autoComplete="new-password"
+                  name="newPassword"
+                />
               </label>
               <label className="block">
                 <span className="mb-1 block text-sm font-medium text-slate-700">Confirm New Password</span>
-                <input type="password" className="input" value={pwForm.confirmPassword}
-                  onChange={(e) => setPwForm((p) => ({ ...p, confirmPassword: e.target.value }))} required />
+                <PremiumPasswordInput
+                  id="sec-confirm-password"
+                  label="Confirm New Password"
+                  value={pwForm.confirmPassword}
+                  onChange={(e) => setPwForm((p) => ({ ...p, confirmPassword: e.target.value }))}
+                  showStrength={false}
+                  required
+                  autoComplete="new-password"
+                  name="confirmPassword"
+                />
               </label>
               <div className="flex items-center gap-3">
                 <button type="submit" disabled={savingPw}

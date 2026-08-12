@@ -4,6 +4,7 @@ import MarketplaceLayout from '../components/MarketplaceLayout';
 import { useStore } from '../components/StoreProvider';
 import SEO from '../components/SEO';
 import { getApiBase } from '../utils/apiBase';
+import PremiumPasswordInput from '../components/PremiumPasswordInput';
 
 const API_BASE = getApiBase();
 
@@ -102,7 +103,15 @@ export default function Login() {
             )}
 
             <input className="input" type="email" placeholder="Email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required />
-            <input className="input" type="password" placeholder="Password" value={form.password} onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))} required />
+            <PremiumPasswordInput
+              id="login-password"
+              label={isLogin ? 'Password' : 'Create Password'}
+              value={form.password}
+              onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+              showStrength={!isLogin}
+              required
+              autoComplete={isLogin ? 'current-password' : 'new-password'}
+            />
 
             {isLogin && (
               <button

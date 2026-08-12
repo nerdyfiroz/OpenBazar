@@ -27,3 +27,13 @@ body {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* PremiumPasswordInput — strength bar grow animation */
+@keyframes pw-bar-grow {
+  from { width: 0; }
+}
+
+/* Ensure smooth floating-label GPU compositing */
+.pw-label-float {
+  will-change: transform, top;
+}

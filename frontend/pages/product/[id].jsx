@@ -184,7 +184,6 @@ export default function ProductDetails({ initialProduct = null, initialRelated =
         image={ogImage}
         type="product"
         jsonLd={jsonLd}
-        keywords={productKeywords}
       />
       <main className="mx-auto max-w-7xl space-y-8 px-4 py-6 md:px-6">
 

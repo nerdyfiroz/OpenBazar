@@ -234,16 +234,22 @@ exports.deleteCoupon = async (req, res) => {
 exports.listPublicCoupons = async (req, res) => {
   try {
     const now = new Date();
-    const coupons = await Coupon.find({
-      isActive: true,
-      startsAt: { $lte: now },
-      expiresAt: { $gt: now },
+    const allCoupons = await Coupon.find({
+      $or: [{ isActive: true }, { isActive: { $exists: false } }],
     })
-      .select('code type value maxDiscount minOrderAmount minItemCount expiresAt')
+      .select('code type value maxDiscount minOrderAmount minItemCount startsAt expiresAt isActive')
       .sort({ minOrderAmount: 1 })
       .lean();
 
-    return res.json(coupons);
+    const publicCoupons = allCoupons.filter((c) => {
+      const start = c.startsAt ? new Date(c.startsAt) : null;
+      const expire = c.expiresAt ? new Date(c.expiresAt) : null;
+      if (start && start > now) return false;
+      if (expire && expire <= now) return false;
+      return true;
+    });
+
+    return res.json(publicCoupons);
   } catch (err) {
     return res.status(500).json({ message: 'Server error' });
   }

@@ -37,3 +37,91 @@ body {
 .pw-label-float {
   will-change: transform, top;
 }
+
+/* ── OrderCompleteButton animations ──────────────────────────────────────── */
+
+/* Package travels left → right across the button */
+@keyframes pkg-travel {
+  0%   { transform: translateX(-140%) scaleX(1); opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { transform: translateX(140%) scaleX(1); opacity: 0; }
+}
+
+/* Soft orange glow that pulses on the package */
+@keyframes pkg-glow {
+  0%, 100% { box-shadow: 0 0 6px 2px rgba(249,115,22,0.55), 0 0 18px 4px rgba(249,115,22,0.25); }
+  50%       { box-shadow: 0 0 12px 4px rgba(249,115,22,0.80), 0 0 30px 8px rgba(249,115,22,0.35); }
+}
+
+/* Trailing particle – floats up and fades */
+@keyframes pkg-particle {
+  0%   { transform: translate(0, 0) scale(1); opacity: 0.9; }
+  100% { transform: translate(var(--px, 0px), -14px) scale(0.3); opacity: 0; }
+}
+
+/* Checkmark SVG stroke draw-on */
+@keyframes checkmark-draw {
+  from { stroke-dashoffset: 40; opacity: 0; }
+  to   { stroke-dashoffset: 0;  opacity: 1; }
+}
+
+/* Success pop — subtle scale bounce */
+@keyframes btn-success-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.045); }
+  70%  { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+/* Error shake */
+@keyframes btn-error-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+/* Fade in for label cross-fade */
+@keyframes label-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── OTP Verification Card ───────────────────────────────────────────────── */
+
+/* Rotating gradient border on the card */
+@keyframes otp-border-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Lock icon gentle float */
+@keyframes otp-lock-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-4px); }
+}
+
+/* OTP input pop on fill */
+@keyframes otp-input-pop {
+  0%   { transform: translateY(-2px) scale(1.06); }
+  100% { transform: translateY(-2px) scale(1); }
+}
+
+/* Card success pulse */
+@keyframes otp-card-success {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.015); }
+  100% { transform: scale(1); }
+}
+
+/* Spinner */
+@keyframes otp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Status fade-slide in */
+@keyframes otp-status-in {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

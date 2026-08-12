@@ -4,14 +4,19 @@ import MarketplaceLayout from '../components/MarketplaceLayout';
 import { useStore } from '../components/StoreProvider';
 import { BANGLADESH_AREAS, BANGLADESH_DIVISIONS, getDistrictOptions, getUpazilaOptions, getUnionOptions } from '../utils/bdAddressOptions';
 import SEO from '../components/SEO';
+import OrderCompleteButton from '../components/OrderCompleteButton';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+import { getApiBase } from '../utils/apiBase';
+
+const API_BASE = getApiBase();
 
 export default function Checkout() {
   const router = useRouter();
   const { cart, token, user, subtotal, couponDiscount, coupon } = useStore();
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  // 'idle' | 'processing' | 'success' | 'error'
+  const [orderStatus, setOrderStatus] = useState('idle');
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -75,18 +80,25 @@ export default function Checkout() {
 
   const placeOrder = async (e) => {
     e.preventDefault();
+
+    // Prevent duplicate submissions
+    if (orderStatus !== 'idle') return;
+
     if (!cart.length) {
       setMessage('Cart is empty.');
       return;
     }
-    
+
     if (totalMangoKg > 0 && (totalMangoKg < 5 || totalMangoKg > 40)) {
       setMessage(`Mango orders must be between 5 kg and 40 kg. Currently: ${totalMangoKg} kg.`);
       return;
     }
 
+    // Start animation immediately — before the API call
     setLoading(true);
+    setOrderStatus('processing');
     setMessage('');
+
     try {
       if (coupon?.code) {
         const couponRes = await fetch(`${API_BASE}/coupons/validate`, {
@@ -137,15 +149,31 @@ export default function Checkout() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Order failed');
 
-      setMessage('Order placed successfully!');
+      // ── Success path ──────────────────────────────────────────────────────
       const orderId = data.order?._id || data._id || '';
-      // Clear cart after successful order
-      setTimeout(() => router.push(`/order-success${orderId ? `?orderId=${orderId}` : ''}`), 400);
+      setOrderStatus('success');
+      setMessage('Order placed successfully!');
+
+      // Let the success animation play for 2 s before navigating
+      setTimeout(() => {
+        router.push(`/order-success${orderId ? `?orderId=${orderId}` : ''}`);
+      }, 2000);
+
     } catch (error) {
-      setMessage(error.message || 'Failed to place order');
-    } finally {
-      setLoading(false);
+      // ── Error path ────────────────────────────────────────────────────────
+      setOrderStatus('error');
+      setMessage(error.message || 'Failed to place order. Please try again.');
+
+      // Restore button to idle after the shake animation (1.2 s)
+      setTimeout(() => {
+        setOrderStatus('idle');
+        setLoading(false);
+      }, 1200);
+      return; // skip the finally setLoading(false) for error path
     }
+
+    // Only reached on success — keep loading true until navigation
+    // (setLoading(false) is called by the finally only in error path above)
   };
 
   return (
@@ -298,9 +326,12 @@ export default function Checkout() {
             </div>
           )}
 
-          <button type="submit" disabled={loading} className="mt-5 rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-70">
-            {loading ? 'Placing Order...' : 'Confirm Order'}
-          </button>
+          <div className="mt-5">
+            <OrderCompleteButton
+              status={orderStatus}
+              disabled={loading && orderStatus === 'idle'}
+            />
+          </div>
         </form>
 
         <aside className="h-fit rounded-2xl border border-slate-200 bg-white p-4 md:p-6">

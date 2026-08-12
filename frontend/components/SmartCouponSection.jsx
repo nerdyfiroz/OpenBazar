@@ -70,7 +70,7 @@ export default function SmartCouponSection({
   // If a coupon is currently applied
   if (appliedCoupon) {
     return (
-      <div className="mt-4 rounded-2xl border border-green-200 bg-green-50/80 p-4 text-slate-800 shadow-sm transition-all">
+      <div className="mt-4 rounded-2xl border border-green-200 bg-green-50/80 p-4 text-slate-800 shadow-sm transition-all space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-500 text-white font-bold text-lg">
@@ -81,7 +81,7 @@ export default function SmartCouponSection({
                 {appliedCoupon.code} Applied
               </p>
               <p className="text-xs text-green-700 font-medium">
-                You saved ৳{couponDiscount.toFixed(0)}
+                You saved ৳{couponDiscount.toFixed(0)} • Only 1 coupon redeemable per order
               </p>
             </div>
           </div>

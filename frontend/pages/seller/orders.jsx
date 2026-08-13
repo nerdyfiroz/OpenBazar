@@ -155,11 +155,18 @@ function SellerOrderCard({ order: o, token, isOpen, onToggle, onMsg, onReload })
   const handleStatusChange = async (nextStatus) => {
     setUpdatingStatus(true);
     try {
-      const res = await fetch(`${API_BASE}/orders/seller/${o._id}/status`, {
+      let res = await fetch(`${API_BASE}/orders/seller/${o._id}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: nextStatus })
       });
+      if (res.status === 404) {
+        res = await fetch(`${API_BASE}/orders/admin/${o._id}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ status: nextStatus })
+        });
+      }
       const data = await safeJson(res);
       if (!res.ok) throw new Error(data.message || 'Failed');
       setStatus(nextStatus);

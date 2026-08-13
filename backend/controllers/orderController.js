@@ -341,12 +341,14 @@ exports.updateOrderStatusSeller = async (req, res) => {
     const order = await Order.findById(req.params.id);
     if (!order) return res.status(404).json({ message: 'Order not found' });
 
-    // Validate that this seller has products in this order
-    const sellerProducts = await Product.find({ seller: req.user._id }).select('_id');
-    const sellerIds = sellerProducts.map((p) => p._id.toString());
-    const hasProduct = (order.products || []).some((item) => sellerIds.includes(item.product?.toString()));
-    if (!hasProduct) {
-      return res.status(403).json({ message: 'Not authorized for this order' });
+    // Validate that this seller has products in this order (or is admin)
+    if (req.user.role !== 'admin') {
+      const sellerProducts = await Product.find({ seller: req.user._id }).select('_id');
+      const sellerIds = sellerProducts.map((p) => p._id.toString());
+      const hasProduct = (order.products || []).some((item) => sellerIds.includes(item.product?.toString()));
+      if (!hasProduct) {
+        return res.status(403).json({ message: 'Not authorized for this order' });
+      }
     }
 
     order.status = status;

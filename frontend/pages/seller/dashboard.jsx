@@ -291,14 +291,21 @@ export default function SellerDashboard() {
   const updateOrderStatus = async (orderId, newStatus) => {
     if (!token) return;
     try {
-      const res = await fetch(`${API_BASE}/orders/seller/${orderId}/status`, {
+      let res = await fetch(`${API_BASE}/orders/seller/${orderId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })
       });
+      if (res.status === 404 && user?.role === 'admin') {
+        res = await fetch(`${API_BASE}/orders/admin/${orderId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ status: newStatus })
+        });
+      }
       const data = await safeJson(res);
       if (!res.ok) throw new Error(data.message || 'Failed to update order status');
-      setMsg(`✅ Order status updated to ${newStatus}`);
+      setMsg(`✅ Order status updated to ${newStatus.toUpperCase()}`);
       setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o)));
       loadOrders(token);
     } catch (err) {

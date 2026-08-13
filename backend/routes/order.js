@@ -12,9 +12,9 @@ router.get('/track/:id', optionalAuthenticate, ctrl.getOrderById);
 router.put('/my/:id/cancel', authenticate, authorize(['user']), ctrl.cancelOrder); // Buyer cancel
 
 // Seller
-router.get('/seller', authenticate, authorize(['seller']), ctrl.getSellerOrders);
-router.put('/seller/:id/status', authenticate, authorize(['seller']), ctrl.updateOrderStatusSeller);
-router.put('/seller/:id/tracking', authenticate, authorize(['seller']), ctrl.updateTracking);
+router.get('/seller', authenticate, authorize(['seller', 'admin']), ctrl.getSellerOrders);
+router.put('/seller/:id/status', authenticate, authorize(['seller', 'admin']), ctrl.updateOrderStatusSeller);
+router.put('/seller/:id/tracking', authenticate, authorize(['seller', 'admin']), ctrl.updateTracking);
 
 // Admin
 router.get('/admin/all', authenticate, authorize(['admin']), ctrl.getAllOrdersAdmin);

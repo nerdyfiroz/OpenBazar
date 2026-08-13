@@ -287,6 +287,24 @@ export default function SellerDashboard() {
     }
   };
 
+  const updateOrderStatus = async (orderId, newStatus) => {
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_BASE}/orders/seller/${orderId}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: newStatus })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update order status');
+      setMsg(`✅ Order status updated to ${newStatus}`);
+      setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o)));
+      loadOrders(token);
+    } catch (err) {
+      setMsg(err.message || 'Failed to update order status');
+    }
+  };
+
   return (
     <MarketplaceLayout>
       <main className="mx-auto max-w-7xl px-4 py-8">
@@ -306,8 +324,9 @@ export default function SellerDashboard() {
         </div>
 
         {msg && (
-          <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-700">
-            {msg} <button className="ml-3 text-orange-400 hover:text-orange-600" onClick={() => setMsg('')}>✕</button>
+          <div className="mb-4 rounded-xl border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-700 flex justify-between items-center">
+            <span>{msg}</span>
+            <button className="ml-3 text-orange-400 hover:text-orange-600" onClick={() => setMsg('')}>✕</button>
           </div>
         )}
 
@@ -321,7 +340,7 @@ export default function SellerDashboard() {
             >
               {t === 'overview' && '📊 Overview'}
               {t === 'products' && '📦 My Products'}
-              {t === 'orders' && '🛒 Orders'}
+              {t === 'orders' && `🛒 Orders (${orders.length})`}
               {t === 'add' && '➕ Add Product'}
               {t === 'flash' && '⚡ Flash Sale'}
               {t === 'kyc' && '🏪 Store & KYC'}
@@ -343,7 +362,12 @@ export default function SellerDashboard() {
 
             {/* Recent orders mini list */}
             <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h2 className="mb-4 text-lg font-bold">Recent Orders</h2>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-bold">Recent Orders</h2>
+                <button onClick={() => setTab('orders')} className="text-xs font-bold text-indigo-600 hover:underline">
+                  View All Orders ({orders.length}) →
+                </button>
+              </div>
               {orders.length === 0 ? (
                 <p className="text-sm text-slate-500">No orders yet.</p>
               ) : (
@@ -351,14 +375,30 @@ export default function SellerDashboard() {
                   {orders.slice(0, 5).map((o) => (
                     <div key={o._id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
                       <div>
-                        <p className="font-medium">{o.customer?.name || 'Customer'}</p>
+                        <p className="font-bold text-slate-800">{o.customer?.name || 'Customer'}</p>
                         <p className="text-xs text-slate-500">{new Date(o.createdAt).toLocaleDateString()}</p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-orange-600">৳{Number(o.myRevenue || 0).toFixed(0)}</p>
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_COLOR[o.status] || 'bg-slate-100 text-slate-600'}`}>
+                      <div className="flex items-center gap-3">
+                        <p className="font-black text-orange-600">৳{Number(o.myRevenue || 0).toFixed(0)}</p>
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold uppercase ${STATUS_COLOR[o.status] || 'bg-slate-100 text-slate-600'}`}>
                           {o.status}
                         </span>
+                        {o.status === 'pending' && (
+                          <button
+                            onClick={() => updateOrderStatus(o._id, 'confirmed')}
+                            className="rounded-lg bg-indigo-600 px-3 py-1 text-xs font-bold text-white hover:bg-indigo-700 shadow-xs"
+                          >
+                            ✅ Confirm
+                          </button>
+                        )}
+                        <a
+                          href={`/invoice/${o._id}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                        >
+                          📄 Invoice
+                        </a>
                       </div>
                     </div>
                   ))}
@@ -424,7 +464,15 @@ export default function SellerDashboard() {
             {orders.length === 0 ? <p className="text-sm text-slate-500">No orders yet.</p> : (
               <div className="space-y-3">
                 {orders.map((o) => (
-                  <OrderRow key={o._id} order={o} token={token} apiBase={API_BASE} statusColor={STATUS_COLOR} onMsg={setMsg} />
+                  <OrderRow
+                    key={o._id}
+                    order={o}
+                    token={token}
+                    apiBase={API_BASE}
+                    statusColor={STATUS_COLOR}
+                    onMsg={setMsg}
+                    onStatusUpdate={updateOrderStatus}
+                  />
                 ))}
               </div>
             )}
@@ -750,14 +798,26 @@ function TextArea({ label, className = '', onChange, ...props }) {
 
 const COURIERS = ['Pathao', 'Steadfast', 'RedX', 'eCourier', 'Sundarban', 'SA Paribahan', 'Janani', 'Other'];
 
-function OrderRow({ order: o, token, apiBase, statusColor, onMsg }) {
+function OrderRow({ order: o, token, apiBase, statusColor, onMsg, onStatusUpdate }) {
   const [open, setOpen] = useState(false);
+  const [status, setStatus] = useState(o.status || 'pending');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [tracking, setTracking] = useState({
     courierService: o.tracking?.courierService || '',
     trackingId: o.tracking?.trackingId || '',
     trackingUrl: o.tracking?.trackingUrl || ''
   });
   const [saving, setSaving] = useState(false);
+
+  const handleStatusChange = async (nextStatus) => {
+    setUpdatingStatus(true);
+    try {
+      await onStatusUpdate(o._id, nextStatus);
+      setStatus(nextStatus);
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   const saveTracking = async () => {
     setSaving(true);
@@ -778,56 +838,146 @@ function OrderRow({ order: o, token, apiBase, statusColor, onMsg }) {
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 overflow-hidden">
+    <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs">
       <button
         onClick={() => setOpen(!open)}
-        className="flex w-full cursor-pointer flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm font-medium hover:bg-slate-50"
+        className="flex w-full cursor-pointer flex-wrap items-center justify-between gap-2 px-5 py-4 text-sm font-medium hover:bg-slate-50 transition"
       >
-        <span className="text-left">{o.customer?.name || 'Customer'} · {new Date(o.createdAt).toLocaleDateString()}</span>
+        <span className="text-left font-bold text-slate-800">
+          {o.customer?.name || 'Customer'} · <span className="text-xs font-normal text-slate-400">{new Date(o.createdAt).toLocaleDateString()}</span>
+        </span>
         <div className="flex items-center gap-3">
-          <span className="font-bold text-orange-600">৳{Number(o.myRevenue || 0).toFixed(0)}</span>
-          <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${statusColor[o.status] || 'bg-slate-100 text-slate-600'}`}>{o.status}</span>
-          <span className="text-slate-400">{open ? '▲' : '▼'}</span>
+          <span className="font-black text-orange-600">৳{Number(o.myRevenue || 0).toFixed(0)}</span>
+          <span className={`rounded-full px-3 py-0.5 text-xs font-black uppercase tracking-wider ${statusColor[o.status] || 'bg-slate-100 text-slate-600'}`}>
+            {o.status}
+          </span>
+          <span className="text-slate-400 text-xs">{open ? '▲ Hide' : '▼ Manage'}</span>
         </div>
       </button>
 
       {open && (
-        <div className="border-t border-slate-100 px-4 pb-4 pt-3 space-y-4">
+        <div className="border-t border-slate-100 px-5 pb-5 pt-4 space-y-4 bg-slate-50/40">
           {/* Order info */}
-          <div className="text-sm text-slate-700 space-y-1">
-            <p><strong>Payment:</strong> {o.paymentMethod}</p>
-            <p><strong>Address:</strong> {o.shippingAddress?.fullAddress || '—'}</p>
-            <ul className="mt-2 space-y-1 border border-slate-100 rounded-lg p-2 bg-slate-50">
-              {(o.myItems || []).map((item, i) => (
-                <li key={i} className="flex justify-between text-xs">
-                  <span>{item.name || 'Product'} × {item.quantity || 1}</span>
-                  <span>৳{(Number(item.price || 0) * Number(item.quantity || 1)).toFixed(0)}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="text-xs text-slate-700 space-y-1 bg-white p-4 rounded-xl border border-slate-100">
+            <p><strong>Payment Method:</strong> {o.paymentMethod}</p>
+            <p><strong>Delivery Address:</strong> {o.shippingAddress?.fullAddress || '—'}</p>
+            <div className="mt-2 border-t border-slate-100 pt-2">
+              <p className="font-bold text-slate-600 mb-1">Your Items in this Order:</p>
+              <ul className="space-y-1">
+                {(o.myItems || []).map((item, i) => (
+                  <li key={i} className="flex justify-between text-xs text-slate-600">
+                    <span>{item.name || 'Product'} × {item.quantity || 1}</span>
+                    <span className="font-bold text-slate-800">৳{(Number(item.price || 0) * Number(item.quantity || 1)).toFixed(0)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          {/* Status Progression Controls */}
+          <div className="rounded-2xl bg-indigo-50/80 border border-indigo-200 p-4">
+            <p className="text-xs font-black text-indigo-900 mb-2">⚡ Order Status Workflow</p>
+            
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {o.status === 'pending' && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('confirmed')}
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  ✅ Confirm Order
+                </button>
+              )}
+              {o.status === 'confirmed' && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('processing')}
+                  className="rounded-xl bg-purple-600 px-4 py-2 text-xs font-black text-white shadow-xs hover:bg-purple-700 disabled:opacity-50"
+                >
+                  📦 Mark as Processing / Packing
+                </button>
+              )}
+              {o.status === 'processing' && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('shipped')}
+                  className="rounded-xl bg-cyan-600 px-4 py-2 text-xs font-black text-white shadow-xs hover:bg-cyan-700 disabled:opacity-50"
+                >
+                  🚚 Mark as Shipped (Parcel Dispatched)
+                </button>
+              )}
+              {o.status === 'shipped' && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('delivered')}
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  🎉 Mark as Delivered
+                </button>
+              )}
+              {['pending', 'confirmed'].includes(o.status) && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => {
+                    if (confirm('Are you sure you want to cancel this order?')) handleStatusChange('cancelled');
+                  }}
+                  className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                >
+                  ❌ Cancel
+                </button>
+              )}
+            </div>
+
+            {/* Custom status selector */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-indigo-100">
+              <span className="text-[11px] font-bold text-indigo-700">Set Custom Status:</span>
+              <select
+                className="rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 outline-none"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                {['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'].map((st) => (
+                  <option key={st} value={st}>{st.toUpperCase()}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={updatingStatus || status === o.status}
+                onClick={() => handleStatusChange(status)}
+                className="rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-50"
+              >
+                {updatingStatus ? 'Updating...' : 'Update Status'}
+              </button>
+            </div>
           </div>
 
           {/* Tracking form */}
-          <div className="rounded-xl bg-orange-50 border border-orange-200 p-4">
-            <p className="mb-3 text-sm font-bold text-orange-700">🚚 Set Courier Tracking</p>
+          <div className="rounded-2xl bg-orange-50/80 border border-orange-200 p-4">
+            <p className="mb-2 text-xs font-black text-orange-800">🚚 Courier Tracking Waybill</p>
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">Courier Service</label>
-                <select className="input text-sm" value={tracking.courierService}
+                <label className="mb-1 block text-[11px] font-bold text-slate-600">Courier Service</label>
+                <select className="w-full rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs outline-none" value={tracking.courierService}
                   onChange={(e) => setTracking((t) => ({ ...t, courierService: e.target.value }))}>
                   <option value="">Select courier</option>
                   {COURIERS.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-xs font-medium text-slate-600">Parcel / Waybill ID</label>
-                <input className="input text-sm font-mono" placeholder="e.g. PH-1234567"
+                <label className="mb-1 block text-[11px] font-bold text-slate-600">Parcel / Waybill ID</label>
+                <input className="w-full rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs font-mono outline-none" placeholder="e.g. PH-1234567"
                   value={tracking.trackingId}
                   onChange={(e) => setTracking((t) => ({ ...t, trackingId: e.target.value }))} />
               </div>
               <div className="sm:col-span-2">
-                <label className="mb-1 block text-xs font-medium text-slate-600">Tracking URL (optional)</label>
-                <input className="input text-sm" placeholder="https://steadfast.com.bd/track?id=..."
+                <label className="mb-1 block text-[11px] font-bold text-slate-600">Tracking URL (optional)</label>
+                <input className="w-full rounded-xl border border-orange-200 bg-white px-3 py-2 text-xs outline-none" placeholder="https://steadfast.com.bd/track?id=..."
                   value={tracking.trackingUrl}
                   onChange={(e) => setTracking((t) => ({ ...t, trackingUrl: e.target.value }))} />
               </div>

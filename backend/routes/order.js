@@ -13,6 +13,7 @@ router.put('/my/:id/cancel', authenticate, authorize(['user']), ctrl.cancelOrder
 
 // Seller
 router.get('/seller', authenticate, authorize(['seller']), ctrl.getSellerOrders);
+router.put('/seller/:id/status', authenticate, authorize(['seller']), ctrl.updateOrderStatusSeller);
 router.put('/seller/:id/tracking', authenticate, authorize(['seller']), ctrl.updateTracking);
 
 // Admin

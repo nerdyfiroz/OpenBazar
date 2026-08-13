@@ -39,11 +39,11 @@ const productWasPurchasedByOrders = (orders = [], productId) => orders.some((ord
 );
 
 const STATUS_TRANSITIONS = {
-  pending: ['confirmed', 'cancelled', 'paid'],
-  paid: ['confirmed', 'cancelled'],
-  confirmed: ['processing', 'cancelled'],
-  processing: ['shipped', 'cancelled'],
-  shipped: ['delivered'],
+  pending: ['confirmed', 'processing', 'shipped', 'delivered', 'cancelled', 'paid'],
+  paid: ['confirmed', 'processing', 'shipped', 'delivered', 'cancelled'],
+  confirmed: ['processing', 'shipped', 'delivered', 'cancelled'],
+  processing: ['shipped', 'delivered', 'cancelled'],
+  shipped: ['delivered', 'cancelled'],
   delivered: [],
   cancelled: []
 };
@@ -324,6 +324,43 @@ exports.updateOrderStatusAdmin = async (req, res) => {
     res.json({ message: 'Order status updated', order });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * PUT /api/orders/seller/:id/status
+ * Seller updates status for an order containing their product listings.
+ */
+exports.updateOrderStatusSeller = async (req, res) => {
+  try {
+    const { status, note } = req.body;
+    if (!['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status' });
+    }
+
+    const order = await Order.findById(req.params.id);
+    if (!order) return res.status(404).json({ message: 'Order not found' });
+
+    // Validate that this seller has products in this order
+    const sellerProducts = await Product.find({ seller: req.user._id }).select('_id');
+    const sellerIds = sellerProducts.map((p) => p._id.toString());
+    const hasProduct = (order.products || []).some((item) => sellerIds.includes(item.product?.toString()));
+    if (!hasProduct) {
+      return res.status(403).json({ message: 'Not authorized for this order' });
+    }
+
+    order.status = status;
+    order.statusHistory.push({
+      status,
+      note: note || `Updated by seller ${req.user.name || ''}`,
+      changedBy: req.user._id
+    });
+    order.updatedAt = new Date();
+    await order.save();
+
+    res.json({ message: `Order status updated to ${status}`, order });
+  } catch (err) {
+    res.status(500).json({ message: err.message || 'Server error' });
   }
 };
 

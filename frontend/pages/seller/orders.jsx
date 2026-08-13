@@ -143,12 +143,34 @@ export default function SellerOrdersPage() {
 }
 
 function SellerOrderCard({ order: o, token, isOpen, onToggle, onMsg, onReload }) {
+  const [status, setStatus] = useState(o.status || 'pending');
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [tracking, setTracking] = useState({
     courierService: o.tracking?.courierService || '',
     trackingId: o.tracking?.trackingId || '',
     trackingUrl: o.tracking?.trackingUrl || ''
   });
   const [saving, setSaving] = useState(false);
+
+  const handleStatusChange = async (nextStatus) => {
+    setUpdatingStatus(true);
+    try {
+      const res = await fetch(`${API_BASE}/orders/seller/${o._id}/status`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ status: nextStatus })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed');
+      setStatus(nextStatus);
+      onMsg(`✅ Order status updated to ${nextStatus.toUpperCase()}`);
+      onReload?.();
+    } catch (err) {
+      onMsg(err.message || 'Failed to update order status');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
 
   const saveTracking = async () => {
     setSaving(true);
@@ -197,6 +219,16 @@ function SellerOrderCard({ order: o, token, isOpen, onToggle, onMsg, onReload })
             {o.status}
           </span>
 
+          {o.status === 'pending' && (
+            <button
+              onClick={() => handleStatusChange('confirmed')}
+              disabled={updatingStatus}
+              className="rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-black text-white hover:bg-indigo-700 shadow-xs disabled:opacity-50"
+            >
+              ✅ Confirm
+            </button>
+          )}
+
           <button
             onClick={onToggle}
             className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100"
@@ -208,6 +240,89 @@ function SellerOrderCard({ order: o, token, isOpen, onToggle, onMsg, onReload })
 
       {isOpen && (
         <div className="border-t border-slate-100 bg-slate-50/50 p-5 md:p-6 space-y-5">
+          {/* Status Progression Controls */}
+          <div className="rounded-2xl bg-indigo-50/80 border border-indigo-200 p-4">
+            <p className="text-xs font-black text-indigo-900 mb-2">⚡ Order Status Workflow</p>
+            
+            {/* Quick Actions */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {o.status === 'pending' && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('confirmed')}
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-black text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50"
+                >
+                  ✅ Confirm Order
+                </button>
+              )}
+              {o.status === 'confirmed' && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('processing')}
+                  className="rounded-xl bg-purple-600 px-4 py-2 text-xs font-black text-white shadow-xs hover:bg-purple-700 disabled:opacity-50"
+                >
+                  📦 Mark as Processing / Packing
+                </button>
+              )}
+              {o.status === 'processing' && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('shipped')}
+                  className="rounded-xl bg-cyan-600 px-4 py-2 text-xs font-black text-white shadow-xs hover:bg-cyan-700 disabled:opacity-50"
+                >
+                  🚚 Mark as Shipped (Parcel Dispatched)
+                </button>
+              )}
+              {o.status === 'shipped' && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => handleStatusChange('delivered')}
+                  className="rounded-xl bg-emerald-600 px-4 py-2 text-xs font-black text-white shadow-xs hover:bg-emerald-700 disabled:opacity-50"
+                >
+                  🎉 Mark as Delivered
+                </button>
+              )}
+              {['pending', 'confirmed'].includes(o.status) && (
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => {
+                    if (confirm('Are you sure you want to cancel this order?')) handleStatusChange('cancelled');
+                  }}
+                  className="rounded-xl border border-rose-200 bg-white px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+                >
+                  ❌ Cancel
+                </button>
+              )}
+            </div>
+
+            {/* Custom status selector */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-indigo-100">
+              <span className="text-[11px] font-bold text-indigo-700">Set Custom Status:</span>
+              <select
+                className="rounded-xl border border-indigo-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 outline-none"
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+              >
+                {['pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'].map((st) => (
+                  <option key={st} value={st}>{st.toUpperCase()}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                disabled={updatingStatus || status === o.status}
+                onClick={() => handleStatusChange(status)}
+                className="rounded-xl bg-slate-900 px-3.5 py-1.5 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-50"
+              >
+                {updatingStatus ? 'Updating...' : 'Update Status'}
+              </button>
+            </div>
+          </div>
+
           {/* Item details */}
           <div>
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-2">Ordered Items ({o.myItems?.length || 0})</h4>

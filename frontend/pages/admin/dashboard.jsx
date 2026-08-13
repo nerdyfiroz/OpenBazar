@@ -232,8 +232,66 @@ export default function AdminDashboard() {
     }
   };
 
+  const [modifiedProductIds, setModifiedProductIds] = useState(new Set());
+  const [savingAllProducts, setSavingAllProducts] = useState(false);
+
   const onProductFieldChange = (productId, field, value) => {
-    setProducts((prev) => (Array.isArray(prev) ? prev.map((p) => (p._id === productId ? { ...p, [field]: value } : p)) : []));
+    setProducts((prev) => (Array.isArray(prev) ? prev.map((p) => {
+      if (p._id === productId) {
+        const updated = { ...p, [field]: value };
+        if (field === 'isOutOfStock') {
+          updated.stock = value ? 0 : (p.stock === 0 ? 9999 : (p.stock || 9999));
+        }
+        return updated;
+      }
+      return p;
+    }) : []));
+    setModifiedProductIds((prev) => new Set(prev).add(productId));
+  };
+
+  const saveAllProducts = async () => {
+    if (!token || !products.length) return;
+    setSavingAllProducts(true);
+    setMessage('');
+    try {
+      const targets = modifiedProductIds.size > 0
+        ? products.filter((p) => modifiedProductIds.has(p._id))
+        : products;
+
+      const updatesPayload = targets.map((p) => ({
+        _id: p._id,
+        price: Number(p.price) || 0,
+        saleType: p.saleType || 'regular',
+        salePercent: Number(p.salePercent) || 0,
+        discountPrice: p.discountPrice !== null && p.discountPrice !== undefined ? Number(p.discountPrice) : null,
+        saleStartAt: p.saleStartAt || null,
+        saleEndAt: p.saleEndAt || null,
+        isApproved: Boolean(p.isApproved),
+        isActive: Boolean(p.isActive),
+        isOutOfStock: Boolean(p.isOutOfStock || (p.stock !== undefined && p.stock <= 0)),
+        stock: p.isOutOfStock ? 0 : (p.stock ?? 9999),
+      }));
+
+      const res = await fetch(`${API_BASE}/products/admin/bulk-update`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ updates: updatesPayload })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Bulk update failed');
+
+      setMessage(`✅ All product changes saved! (${data.products?.length || targets.length} products updated)`);
+      setModifiedProductIds(new Set());
+      fetchData();
+    } catch (err) {
+      setMessage(err.message || 'Failed to save product changes');
+    } finally {
+      setSavingAllProducts(false);
+    }
   };
 
   const updateOrderStatus = async (orderId, status) => {
@@ -642,143 +700,185 @@ export default function AdminDashboard() {
             )}
           </section>
 
-          <section className="rounded-lg border border-gray-200 bg-white p-4 overflow-x-auto">
-            <h2 className="text-lg font-semibold mb-3">Manage Product Listings & Prices</h2>
+          <section className="rounded-lg border border-gray-200 bg-white p-5 shadow-sm overflow-x-auto">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 border-b pb-3">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800">Manage Product Listings & Prices</h2>
+                <p className="text-xs text-slate-500">Edit prices, discount %, sale dates, status, or mark Out of Stock. Use One-Click Save All to update everything at once.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                {modifiedProductIds.size > 0 && (
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-800 border border-amber-300">
+                    ⚡ {modifiedProductIds.size} unsaved change{modifiedProductIds.size > 1 ? 's' : ''}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  disabled={savingAllProducts}
+                  onClick={saveAllProducts}
+                  className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-5 py-2 text-sm font-extrabold text-white shadow-md hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {savingAllProducts ? '💾 Saving All...' : '💾 Save All Changes'}
+                </button>
+              </div>
+            </div>
+
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="text-left border-b">
-                  <th className="py-2 pr-3">Product</th>
-                  <th className="py-2 pr-3">Seller</th>
-                  <th className="py-2 pr-3">Sale Type</th>
-                  <th className="py-2 pr-3">Base Price</th>
-                  <th className="py-2 pr-3">Sale %</th>
-                  <th className="py-2 pr-3">Sale Price</th>
-                  <th className="py-2 pr-3">Sale Start</th>
-                  <th className="py-2 pr-3">Sale End</th>
-                  <th className="py-2 pr-3">Approved</th>
-                  <th className="py-2 pr-3">Active</th>
-                  <th className="py-2 pr-3">Action</th>
+                <tr className="text-left border-b bg-slate-50">
+                  <th className="py-2.5 px-3">Product</th>
+                  <th className="py-2.5 px-3">Seller</th>
+                  <th className="py-2.5 px-3">Sale Type</th>
+                  <th className="py-2.5 px-3">Base Price</th>
+                  <th className="py-2.5 px-3">Sale %</th>
+                  <th className="py-2.5 px-3">Sale Price</th>
+                  <th className="py-2.5 px-3">Sale Start</th>
+                  <th className="py-2.5 px-3">Sale End</th>
+                  <th className="py-2.5 px-3 text-center">Out of Stock</th>
+                  <th className="py-2.5 px-3 text-center">Approved</th>
+                  <th className="py-2.5 px-3 text-center">Active</th>
+                  <th className="py-2.5 px-3 text-center">Action</th>
                 </tr>
               </thead>
               <tbody>
-                {products.map((p) => (
-                  <tr key={p._id} className="border-b align-top">
-                    <td className="py-2 pr-3 font-medium">{p.name}</td>
-                    <td className="py-2 pr-3">{p.seller?.name || 'N/A'}</td>
-                    <td className="py-2 pr-3">
-                      <select
-                        className="w-32 rounded border px-2 py-1"
-                        value={p.saleType || 'regular'}
-                        onChange={(e) => onProductFieldChange(p._id, 'saleType', e.target.value)}
-                      >
-                        <option value="regular">Regular</option>
-                        <option value="sale">Flash Sale</option>
-                        <option value="preorder">Preorder</option>
-                      </select>
-                    </td>
-                    <td className="py-2 pr-3">
-                      <input
-                        className="w-24 border rounded px-2 py-1"
-                        type="number"
-                        min="0"
-                        value={p.price ?? 0}
-                        onChange={(e) => onProductFieldChange(p._id, 'price', Number(e.target.value))}
-                      />
-                    </td>
-                    <td className="py-2 pr-3">
-                      <input
-                        className="w-24 border rounded px-2 py-1"
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={p.salePercent ?? 0}
-                        onChange={(e) => {
-                          const newSalePercent = e.target.value === '' ? 0 : Number(e.target.value);
-                          const basePrice = Number(p.price) || 0;
-                          onProductFieldChange(p._id, 'salePercent', newSalePercent);
-                          // Auto-calculate discount price: Sale Price = Base Price * (1 - Discount%)
-                          if (newSalePercent > 0 && basePrice > 0) {
-                            const calculatedDiscount = Number((basePrice * (1 - newSalePercent / 100)).toFixed(2));
-                            console.log(`Auto-calc: ${basePrice} * (1 - ${newSalePercent}/100) = ${calculatedDiscount}`);
-                            onProductFieldChange(p._id, 'discountPrice', calculatedDiscount);
-                          } else {
-                            onProductFieldChange(p._id, 'discountPrice', null);
-                          }
-                        }}
-                      />
-                    </td>
-                    <td className="py-2 pr-3">
-                      <input
-                        className="w-24 border rounded px-2 py-1"
-                        type="number"
-                        min="0"
-                        value={p.discountPrice ?? ''}
-                        placeholder="auto"
-                        title="Sale price after discount (auto-calculated from Sale %)"
-                        onChange={(e) => onProductFieldChange(
-                          p._id,
-                          'discountPrice',
-                          e.target.value === '' ? null : Number(e.target.value)
-                        )}
-                      />
-                    </td>
-                    <td className="py-2 pr-3">
-                      <input
-                        className="w-44 rounded border px-2 py-1"
-                        type="datetime-local"
-                        value={toDateTimeLocal(p.saleStartAt)}
-                        onChange={(e) => onProductFieldChange(p._id, 'saleStartAt', e.target.value || null)}
-                      />
-                    </td>
-                    <td className="py-2 pr-3">
-                      <input
-                        className="w-44 rounded border px-2 py-1"
-                        type="datetime-local"
-                        value={toDateTimeLocal(p.saleEndAt)}
-                        onChange={(e) => onProductFieldChange(p._id, 'saleEndAt', e.target.value || null)}
-                      />
-                    </td>
-                    <td className="py-2 pr-3">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(p.isApproved)}
-                        onChange={(e) => onProductFieldChange(p._id, 'isApproved', e.target.checked)}
-                      />
-                    </td>
-                    <td className="py-2 pr-3">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(p.isActive)}
-                        onChange={(e) => onProductFieldChange(p._id, 'isActive', e.target.checked)}
-                      />
-                    </td>
-                    <td className="py-2 pr-3">
-                      <div className="flex gap-2">
-                        <button
-                          className="rounded bg-black px-3 py-1 text-white"
-                          onClick={() => updateProduct(p._id, {
-                            price: Number(p.price) || 0,
-                            saleType: p.saleType,
-                            salePercent: Number(p.salePercent) || 0,
-                            discountPrice: p.discountPrice !== null && p.discountPrice !== undefined ? Number(p.discountPrice) : null,
-                            saleStartAt: p.saleStartAt || null,
-                            saleEndAt: p.saleEndAt || null,
-                            isApproved: p.isApproved,
-                            isActive: p.isActive
-                          })}
+                {products.map((p) => {
+                  const isOut = Boolean(p.isOutOfStock || (p.stock !== undefined && p.stock <= 0));
+                  return (
+                    <tr key={p._id} className={`border-b align-middle ${isOut ? 'bg-red-50/40' : ''}`}>
+                      <td className="py-3 px-3 font-medium text-slate-900">{p.name}</td>
+                      <td className="py-3 px-3 text-slate-600">{p.seller?.name || 'N/A'}</td>
+                      <td className="py-3 px-3">
+                        <select
+                          className="w-32 rounded border border-slate-300 px-2 py-1 bg-white"
+                          value={p.saleType || 'regular'}
+                          onChange={(e) => onProductFieldChange(p._id, 'saleType', e.target.value)}
                         >
-                          Save
-                        </button>
-                        <button
-                          className="rounded bg-red-600 px-3 py-1 text-white"
-                          onClick={() => deleteProduct(p._id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          <option value="regular">Regular</option>
+                          <option value="sale">Flash Sale</option>
+                          <option value="preorder">Preorder</option>
+                        </select>
+                      </td>
+                      <td className="py-3 px-3">
+                        <input
+                          className="w-24 border border-slate-300 rounded px-2 py-1 font-semibold text-slate-900 bg-white"
+                          type="number"
+                          min="0"
+                          value={p.price ?? 0}
+                          onChange={(e) => onProductFieldChange(p._id, 'price', Number(e.target.value))}
+                        />
+                      </td>
+                      <td className="py-3 px-3">
+                        <input
+                          className="w-24 border border-slate-300 rounded px-2 py-1 font-semibold text-slate-900 bg-white"
+                          type="number"
+                          min="0"
+                          max="100"
+                          value={p.salePercent ?? 0}
+                          onChange={(e) => {
+                            const newSalePercent = e.target.value === '' ? 0 : Number(e.target.value);
+                            const basePrice = Number(p.price) || 0;
+                            onProductFieldChange(p._id, 'salePercent', newSalePercent);
+                            if (newSalePercent > 0 && basePrice > 0) {
+                              const calculatedDiscount = Number((basePrice * (1 - newSalePercent / 100)).toFixed(2));
+                              onProductFieldChange(p._id, 'discountPrice', calculatedDiscount);
+                            } else {
+                              onProductFieldChange(p._id, 'discountPrice', null);
+                            }
+                          }}
+                        />
+                      </td>
+                      <td className="py-3 px-3">
+                        <input
+                          className="w-24 border border-slate-300 rounded px-2 py-1 font-semibold text-slate-900 bg-white"
+                          type="number"
+                          min="0"
+                          value={p.discountPrice ?? ''}
+                          placeholder="auto"
+                          title="Sale price after discount (auto-calculated from Sale %)"
+                          onChange={(e) => onProductFieldChange(
+                            p._id,
+                            'discountPrice',
+                            e.target.value === '' ? null : Number(e.target.value)
+                          )}
+                        />
+                      </td>
+                      <td className="py-3 px-3">
+                        <input
+                          className="w-44 rounded border border-slate-300 px-2 py-1 bg-white text-xs"
+                          type="datetime-local"
+                          value={toDateTimeLocal(p.saleStartAt)}
+                          onChange={(e) => onProductFieldChange(p._id, 'saleStartAt', e.target.value || null)}
+                        />
+                      </td>
+                      <td className="py-3 px-3">
+                        <input
+                          className="w-44 rounded border border-slate-300 px-2 py-1 bg-white text-xs"
+                          type="datetime-local"
+                          value={toDateTimeLocal(p.saleEndAt)}
+                          onChange={(e) => onProductFieldChange(p._id, 'saleEndAt', e.target.value || null)}
+                        />
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <label className="inline-flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            className="w-4 h-4 rounded text-red-600 focus:ring-red-500 cursor-pointer"
+                            checked={isOut}
+                            onChange={(e) => onProductFieldChange(p._id, 'isOutOfStock', e.target.checked)}
+                          />
+                          {isOut && (
+                            <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-700 uppercase">
+                              Out
+                            </span>
+                          )}
+                        </label>
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          checked={Boolean(p.isApproved)}
+                          onChange={(e) => onProductFieldChange(p._id, 'isApproved', e.target.checked)}
+                        />
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <input
+                          type="checkbox"
+                          className="w-4 h-4 rounded text-green-600 focus:ring-green-500 cursor-pointer"
+                          checked={Boolean(p.isActive)}
+                          onChange={(e) => onProductFieldChange(p._id, 'isActive', e.target.checked)}
+                        />
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <div className="flex gap-2 justify-center">
+                          <button
+                            className="rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-700"
+                            onClick={() => updateProduct(p._id, {
+                              price: Number(p.price) || 0,
+                              saleType: p.saleType,
+                              salePercent: Number(p.salePercent) || 0,
+                              discountPrice: p.discountPrice !== null && p.discountPrice !== undefined ? Number(p.discountPrice) : null,
+                              saleStartAt: p.saleStartAt || null,
+                              saleEndAt: p.saleEndAt || null,
+                              isApproved: p.isApproved,
+                              isActive: p.isActive,
+                              isOutOfStock: isOut,
+                              stock: isOut ? 0 : (p.stock ?? 9999),
+                            })}
+                          >
+                            Save
+                          </button>
+                          <button
+                            className="rounded bg-red-600 px-3 py-1 text-xs font-semibold text-white hover:bg-red-700"
+                            onClick={() => deleteProduct(p._id)}
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </section>

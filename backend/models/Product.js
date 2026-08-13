@@ -68,6 +68,7 @@ const ProductSchema = new mongoose.Schema({
   }],
   soldCount: { type: Number, default: 0, min: 0 },
   stock: { type: Number, default: 9999, min: 0 }, // 9999 = effectively unlimited for legacy products
+  isOutOfStock: { type: Boolean, default: false },
   reviews: [ReviewSchema],
   seller: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   isApproved: { type: Boolean, default: false },

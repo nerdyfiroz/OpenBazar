@@ -431,7 +431,9 @@ exports.adminUpdateProduct = async (req, res) => {
       'video',
       'images',
       'isApproved',
-      'isActive'
+      'isActive',
+      'stock',
+      'isOutOfStock'
     ];
     const updates = {};
 
@@ -441,6 +443,16 @@ exports.adminUpdateProduct = async (req, res) => {
 
     const existingProduct = await Product.findById(req.params.id);
     if (!existingProduct) return res.status(404).json({ message: 'Not found' });
+
+    // Handle stock / isOutOfStock sync
+    if (updates.isOutOfStock !== undefined) {
+      updates.isOutOfStock = Boolean(updates.isOutOfStock);
+      if (updates.isOutOfStock) updates.stock = 0;
+      else if (updates.stock === undefined && existingProduct.stock === 0) updates.stock = 9999;
+    } else if (updates.stock !== undefined) {
+      updates.stock = Number(updates.stock);
+      updates.isOutOfStock = updates.stock <= 0;
+    }
 
     // Convert numeric fields to numbers for proper validation
     if (updates.price !== undefined) updates.price = Number(updates.price);
@@ -482,6 +494,56 @@ exports.adminUpdateProduct = async (req, res) => {
       return res.status(400).json({ message: err.message || 'Invalid product data' });
     }
     return res.status(500).json({ message: err.message || 'Server error' });
+  }
+};
+
+exports.adminBulkUpdateProducts = async (req, res) => {
+  try {
+    const { updates } = req.body;
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res.status(400).json({ message: 'No product updates provided' });
+    }
+
+    const updatedProducts = [];
+    for (const item of updates) {
+      const productId = item._id || item.id;
+      if (!productId) continue;
+
+      const product = await Product.findById(productId);
+      if (!product) continue;
+
+      const fields = [
+        'saleType', 'price', 'salePercent', 'discountPrice',
+        'saleStartAt', 'saleEndAt', 'isApproved', 'isActive',
+        'stock', 'isOutOfStock'
+      ];
+
+      fields.forEach((f) => {
+        if (item[f] !== undefined) product[f] = item[f];
+      });
+
+      if (item.isOutOfStock !== undefined) {
+        product.isOutOfStock = Boolean(item.isOutOfStock);
+        if (product.isOutOfStock) product.stock = 0;
+        else if (product.stock === 0) product.stock = 9999;
+      } else if (item.stock !== undefined) {
+        product.stock = Number(item.stock);
+        product.isOutOfStock = product.stock <= 0;
+      }
+
+      // Auto-calc discount
+      if (item.salePercent !== undefined && Number(item.salePercent) > 0) {
+        const basePrice = Number(product.price) || 0;
+        product.discountPrice = Math.max(0, Number((basePrice * (1 - Number(item.salePercent) / 100)).toFixed(2)));
+      }
+
+      await product.save();
+      updatedProducts.push(product);
+    }
+
+    res.json({ message: `Successfully updated ${updatedProducts.length} product(s)`, products: updatedProducts });
+  } catch (err) {
+    res.status(500).json({ message: err.message || 'Bulk update failed' });
   }
 };
 

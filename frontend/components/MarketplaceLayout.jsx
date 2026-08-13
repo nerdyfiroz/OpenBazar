@@ -180,7 +180,7 @@ export default function MarketplaceLayout({ children }) {
                     className="rounded-lg bg-slate-900 py-2 font-semibold text-white">Logout</button>
                 </>
               )}
-            </nav>
+            </div>
           </div>
         )}
       </header>

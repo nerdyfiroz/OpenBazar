@@ -111,6 +111,13 @@ export default function MobileVerificationModal({
 
   const validatePhoneFormat = (val) => /^01[3-9]\d{8}$/.test(val.replace(/\s+/g, ''));
 
+  const readResponse = async (res) => {
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) return res.json();
+    const text = await res.text();
+    return { message: text || 'Server returned an invalid response. Please try again.' };
+  };
+
   const handleSendOtp = async (e) => {
     if (e) e.preventDefault();
     setError('');
@@ -135,7 +142,7 @@ export default function MobileVerificationModal({
         body: JSON.stringify({ setupToken, phone: clean }),
       });
 
-      const data = await res.json();
+      const data = await readResponse(res);
       if (!res.ok) throw new Error(data.message || 'Failed to send code');
 
       setMaskedPhone(data.maskedPhone || clean);
@@ -171,7 +178,7 @@ export default function MobileVerificationModal({
         body: JSON.stringify({ setupToken, phone: phone.trim(), otp }),
       });
 
-      const data = await res.json();
+      const data = await readResponse(res);
       if (!res.ok) throw new Error(data.message || 'Verification failed');
 
       if (data.token && data.user) {
@@ -368,10 +375,13 @@ export default function MobileVerificationModal({
                     height: 48,
                     padding: '0 14px',
                     borderRadius: 12,
-                    border: '1.5px solid #cbd5e1',
-                    fontSize: 15,
-                    fontWeight: 600,
+                    border: '1.5px solid #6366f1',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    fontSize: 16,
+                    fontWeight: 700,
                     outline: 'none',
+                    boxShadow: '0 0 0 3px rgba(99, 102, 241, 0.15)',
                   }}
                 />
               </div>

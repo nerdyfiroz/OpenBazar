@@ -81,12 +81,16 @@ const nextConfig = {
     ],
   },
 
-  // Proxy /uploads/* requests to the backend so images load without CORS issues
+  // Proxy /uploads/* and /api/auth/* requests to the backend so requests load without CORS or 404 issues
   async rewrites() {
     return [
       {
         source: '/uploads/:path*',
         destination: `${backendOrigin}/uploads/:path*`,
+      },
+      {
+        source: '/api/auth/:path*',
+        destination: `${backendOrigin}/api/auth/:path*`,
       },
     ];
   },

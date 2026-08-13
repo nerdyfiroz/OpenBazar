@@ -5,8 +5,9 @@ const mongoose = require('mongoose');
 const UserSchema = new mongoose.Schema({
   name: { type: String, required: true },
   email: { type: String, required: true, unique: true },
-  phone: { type: String, required: true },
-  password: { type: String, required: true },
+  phone: { type: String, default: '' },
+  password: { type: String, default: '' },
+  googleId: { type: String, default: '' },
   role: { type: String, enum: ['user', 'seller', 'admin'], default: 'user' },
   isBlocked: { type: Boolean, default: false },
   isSellerVerifiedBadge: { type: Boolean, default: false },
@@ -43,6 +44,11 @@ const UserSchema = new mongoose.Schema({
   emailVerificationTokenHash: { type: String },
   emailVerificationTokenExpiry: { type: Date },
   isVerified: { type: Boolean, default: false },
+  // ── Phone OTP verification (Google sign-up flow) ──────────────────────────
+  phoneVerified:      { type: Boolean, default: false },
+  phoneOtpHash:       { type: String,  default: '' },
+  phoneOtpExpiresAt:  { type: Date,    default: null },
+  phoneOtpAttempts:   { type: Number,  default: 0 },
   createdAt: { type: Date, default: Date.now },
   // Upgrade: Add address, profile, etc.
 });

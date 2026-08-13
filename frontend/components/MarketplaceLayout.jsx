@@ -54,7 +54,7 @@ export default function MarketplaceLayout({ children }) {
           <Link href="/" className="flex-shrink-0">
             <div className="relative h-16 w-36 md:h-24 md:w-44 lg:h-28 lg:w-52">
               <SmartImage
-                src="/api/logo"
+                src={`/api/logo?v=${process.env.NEXT_PUBLIC_BUILD_ID || Date.now()}`}
                 alt="OpenBazar"
                 fill
                 priority

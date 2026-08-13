@@ -79,13 +79,9 @@ async function sendPhoneOtp(phone, otp) {
 
   await sendSmsViaProvider(normalized, message);
 
-  const isFreeToolMode = ['free', 'console'].includes(SMS_PROVIDER) || !process.env.TWILIO_ACCOUNT_SID;
   return {
     normalized,
-    maskedPhone,
-    isFreeToolMode,
-    // In free/dev mode, return freeOtpHint so users & testers can complete phone verification instantly without cost
-    freeOtpHint: isFreeToolMode ? otp : undefined
+    maskedPhone
   };
 }
 

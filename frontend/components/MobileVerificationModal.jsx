@@ -94,7 +94,6 @@ export default function MobileVerificationModal({
   const [error, setError] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
   const [maskedPhone, setMaskedPhone] = useState('');
-  const [freeOtpHint, setFreeOtpHint] = useState('');
   const [cooldown, setCooldown] = useState(0);
 
   useEffect(() => {
@@ -146,7 +145,6 @@ export default function MobileVerificationModal({
       if (!res.ok) throw new Error(data.message || 'Failed to send code');
 
       setMaskedPhone(data.maskedPhone || clean);
-      if (data.freeOtpHint) setFreeOtpHint(data.freeOtpHint);
       setInfoMsg(data.message || 'Verification code sent!');
       setStep(2);
       setCooldown(60);
@@ -250,49 +248,6 @@ export default function MobileVerificationModal({
               : `We sent a code to ${maskedPhone || phone}.`}
           </p>
         </div>
-
-        {/* Test Assistant Helper Banner */}
-        {freeOtpHint && (
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%)',
-              border: '1.5px solid #a5b4fc',
-              borderRadius: 14,
-              padding: '12px 14px',
-              marginBottom: 16,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 10,
-            }}
-          >
-            <div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: '#3730a3', textTransform: 'uppercase' }}>
-                ✨ Instant Test Verification Code:
-              </div>
-              <div style={{ fontSize: 18, fontWeight: 900, color: '#1e1b4b', letterSpacing: 2 }}>
-                {freeOtpHint}
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => setOtp(freeOtpHint)}
-              style={{
-                padding: '6px 12px',
-                borderRadius: 8,
-                background: '#4f46e5',
-                color: '#fff',
-                border: 'none',
-                fontSize: 12,
-                fontWeight: 700,
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(79, 70, 229, 0.3)',
-              }}
-            >
-              Auto-Fill Code
-            </button>
-          </div>
-        )}
 
         {/* Status Alerts */}
         {error && (

@@ -510,14 +510,12 @@ const handleSendPhoneOtp = async (req, res) => {
     user.phoneOtpAttempts = 0;
     await user.save();
 
-    const { maskedPhone, isFreeToolMode, freeOtpHint } = await sendPhoneOtp(rawPhone, otp);
+    const { maskedPhone } = await sendPhoneOtp(rawPhone, otp);
 
     res.json({
       success: true,
       message: `Verification code sent to ${maskedPhone}`,
-      maskedPhone,
-      isFreeToolMode,
-      freeOtpHint: freeOtpHint || undefined,
+      maskedPhone
     });
   } catch (err) {
     console.error('[SendPhoneOTP]', err.message);

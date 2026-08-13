@@ -274,13 +274,15 @@ export default function UserOrders() {
 
                       {/* Invoice */}
                       <div className="mt-4 flex flex-wrap gap-2">
-                        <a href={`${API_BASE.replace('/api', '')}/api/invoice/${order._id}`}
-                          target="_blank" rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-orange-300 px-3 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50">
-                          📄 Invoice
-                        </a>
+                        <Link
+                          href={`/invoice/${order._id}`}
+                          target="_blank"
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/80 px-3.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition"
+                        >
+                          📄 View / Print Invoice
+                        </Link>
                         <Link href={`/track/${order._id}`}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-slate-300 px-3.5 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition">
                           🔍 Track Order
                         </Link>
                         {['pending', 'confirmed'].includes(order.status) && (

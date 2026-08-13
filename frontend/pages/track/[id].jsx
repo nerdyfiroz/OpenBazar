@@ -206,11 +206,14 @@ export default function TrackOrder() {
               )}
 
               <div className="mt-3 flex gap-2">
-                <a href={`${API_BASE.replace('/api', '')}/api/invoice/${order._id}`}
-                  target="_blank" rel="noreferrer"
-                  className="rounded-lg border border-orange-300 px-3 py-1.5 text-xs font-semibold text-orange-600 hover:bg-orange-50">
-                  📄 Download Invoice
-                </a>
+                <Link
+                  href={`/invoice/${order._id}`}
+                  target="_blank"
+                  className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50/80 px-4 py-2 text-xs font-black text-indigo-700 hover:bg-indigo-100 transition shadow-xs"
+                >
+                  <span>📄</span>
+                  <span>View / Download Tax Invoice</span>
+                </Link>
               </div>
             </div>
           </div>

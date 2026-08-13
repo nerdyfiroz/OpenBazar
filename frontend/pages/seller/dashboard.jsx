@@ -3,7 +3,6 @@ import MarketplaceLayout from '../../components/MarketplaceLayout';
 import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import SmartImage from '../../components/SmartImage';
 import { useStore } from '../../components/StoreProvider';
-import MobileVerificationModal from '../../components/MobileVerificationModal';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 const CATEGORIES = [
@@ -38,7 +37,6 @@ const blankFlashForm = {
 
 export default function SellerDashboard() {
   const { user } = useStore();
-  const [verificationModalOpen, setVerificationModalOpen] = useState(false);
   const [token, setToken] = useState(null);
   const [tab, setTab] = useState('overview'); // overview | products | orders | add | flash
   const [products, setProducts] = useState([]);
@@ -719,15 +717,6 @@ export default function SellerDashboard() {
         )}
 
       </main>
-
-      {verificationModalOpen && (
-        <MobileVerificationModal
-          isOpen={verificationModalOpen}
-          onClose={() => setVerificationModalOpen(false)}
-          initialPhone={user?.phone || ''}
-          userEmail={user?.email || ''}
-        />
-      )}
     </MarketplaceLayout>
   );
 }
@@ -844,12 +833,25 @@ function OrderRow({ order: o, token, apiBase, statusColor, onMsg }) {
               </div>
             </div>
             <button onClick={saveTracking} disabled={saving || !tracking.trackingId}
-              className="mt-3 rounded-lg bg-orange-500 px-4 py-2 text-xs font-bold text-white hover:bg-orange-600 disabled:opacity-50">
+              className="mt-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:opacity-90 disabled:opacity-50">
               {saving ? 'Saving...' : '💾 Save Tracking'}
             </button>
             {tracking.trackingId && (
-              <p className="mt-2 text-xs text-green-600">✓ Tracking ID set — buyer can see this on their orders page.</p>
+              <p className="mt-2 text-xs text-green-600 font-semibold">✓ Tracking ID set — buyer can track this package in real time.</p>
             )}
+          </div>
+
+          {/* Actions & Invoice */}
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <a
+              href={`/invoice/${o._id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition"
+            >
+              <span>📄</span>
+              <span>View / Print Customer Invoice</span>
+            </a>
           </div>
         </div>
       )}

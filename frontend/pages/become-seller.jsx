@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import MarketplaceLayout from '../components/MarketplaceLayout';
 import { useStore } from '../components/StoreProvider';
-import MobileVerificationModal from '../components/MobileVerificationModal';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 
 export default function BecomeSellerPage() {
   const { user } = useStore();
-  const [modalOpen, setModalOpen] = useState(false);
   const [statusData, setStatusData] = useState(null);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(true);
@@ -277,15 +275,6 @@ export default function BecomeSellerPage() {
           </>
         )}
       </main>
-
-      {modalOpen && (
-        <MobileVerificationModal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          initialPhone={user?.phone || ''}
-          userEmail={user?.email || ''}
-        />
-      )}
     </MarketplaceLayout>
   );
 }

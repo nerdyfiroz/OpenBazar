@@ -6,7 +6,6 @@ import SEO from '../components/SEO';
 import { getApiBase } from '../utils/apiBase';
 import PremiumPasswordInput from '../components/PremiumPasswordInput';
 import GoogleSignInButton from '../components/GoogleSignInButton';
-import MobileVerificationModal from '../components/MobileVerificationModal';
 
 const API_BASE = getApiBase();
 
@@ -373,8 +372,8 @@ export default function Login() {
                   <AuthInput id="reg-name" placeholder="Your full name" value={form.name} onChange={set('name')} required autoComplete="name" />
                 </div>
                 <div>
-                  <FieldLabel htmlFor="reg-phone">Phone Number</FieldLabel>
-                  <AuthInput id="reg-phone" placeholder="01XXXXXXXXX" value={form.phone} onChange={set('phone')} required autoComplete="tel" />
+                  <FieldLabel htmlFor="reg-phone">Phone Number (Optional)</FieldLabel>
+                  <AuthInput id="reg-phone" placeholder="01XXXXXXXXX (Optional)" value={form.phone} onChange={set('phone')} autoComplete="tel" />
                 </div>
                 <div>
                   <FieldLabel htmlFor="reg-role">Join As</FieldLabel>

@@ -1687,6 +1687,19 @@ function AdminOrderRow({ order: o, token, apiBase, onUpdate, onMsg }) {
               {savingTracking ? '...' : 'Save Tracking'}
             </button>
           </div>
+
+          {/* Actions & Invoice */}
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-100">
+            <a
+              href={`/invoice/${o._id}`}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3.5 py-1.5 text-xs font-bold text-indigo-700 hover:bg-indigo-100 transition"
+            >
+              <span>📄</span>
+              <span>View / Print Invoice</span>
+            </a>
+          </div>
         </div>
       )}
     </div>

@@ -72,16 +72,22 @@ export default function OrderSuccess() {
           </div>
         )}
 
-        <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
+        <div className="mt-8 flex flex-wrap gap-3 justify-center">
           {orderId && (
-            <Link href={`/track/${orderId}`}
-              className="rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white hover:bg-orange-600">
-              🔍 Track My Order
-            </Link>
+            <>
+              <Link href={`/track/${orderId}`}
+                className="rounded-xl bg-orange-500 px-6 py-3 text-sm font-semibold text-white hover:bg-orange-600 shadow-sm">
+                🔍 Track My Order
+              </Link>
+              <Link href={`/invoice/${orderId}`} target="_blank"
+                className="rounded-xl bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700 shadow-sm">
+                📄 View / Print Invoice
+              </Link>
+            </>
           )}
           <Link href="/user/orders"
             className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold hover:bg-slate-50">
-            📦 View All Orders
+            📦 My Orders
           </Link>
           <Link href="/category"
             className="rounded-xl border border-slate-300 px-6 py-3 text-sm font-semibold hover:bg-slate-50">

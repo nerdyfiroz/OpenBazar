@@ -114,7 +114,9 @@ export function StoreProvider({ children }) {
     }
   };
 
-  const addToCart = (product, quantity = 1) => {
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
+
+  const addToCart = (product, quantity = 1, openDrawer = true) => {
     setCart((prev) => {
       const nextItem = {
         ...product,
@@ -133,6 +135,10 @@ export function StoreProvider({ children }) {
       const effectivePrice = nextItem.unitPrice ?? (nextItem.discountPrice ?? nextItem.price);
       return [...prev, { ...nextItem, unitPrice: effectivePrice, quantity }];
     });
+
+    if (openDrawer) {
+      setCartDrawerOpen(true);
+    }
   };
 
   const updateQuantity = (idOrKey, quantity) => {
@@ -252,6 +258,10 @@ export function StoreProvider({ children }) {
     coupon,
     subtotal,
     couponDiscount,
+    cartDrawerOpen,
+    openCartDrawer: () => setCartDrawerOpen(true),
+    closeCartDrawer: () => setCartDrawerOpen(false),
+    setCartDrawerOpen,
     login,
     logout,
     addToCart,

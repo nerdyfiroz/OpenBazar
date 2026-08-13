@@ -3,13 +3,14 @@ import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from './StoreProvider';
 import SmartImage from './SmartImage';
+import CartDrawer from './CartDrawer';
 import { getApiBase } from '../utils/apiBase';
 
 const API_BASE = getApiBase();
 
 export default function MarketplaceLayout({ children }) {
   const router = useRouter();
-  const { cart, user, logout } = useStore();
+  const { cart, user, logout, openCartDrawer } = useStore();
   const [search, setSearch] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -104,16 +105,26 @@ export default function MarketplaceLayout({ children }) {
                   className="rounded-full bg-slate-900 px-3 py-1.5 text-white hover:bg-slate-700">Logout</button>
               </>
             )}
-            <Link href="/cart" className="relative rounded-full bg-orange-500 px-3 py-1.5 text-white hover:bg-orange-600">
-              🛒 <span className="ml-0.5">{cartCount}</span>
-            </Link>
+            <button
+              type="button"
+              onClick={openCartDrawer}
+              className="relative flex items-center gap-1.5 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:from-orange-600 hover:to-amber-600 transition"
+            >
+              <span>🛒</span>
+              <span>{cartCount}</span>
+            </button>
           </nav>
 
           {/* Mobile: cart + hamburger */}
           <div className="ml-auto flex items-center gap-2 md:hidden">
-            <Link href="/cart" className="relative rounded-full bg-orange-500 px-3 py-1.5 text-sm text-white">
-              🛒 {cartCount}
-            </Link>
+            <button
+              type="button"
+              onClick={openCartDrawer}
+              className="relative flex items-center gap-1 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-3 py-1.5 text-xs font-bold text-white shadow-sm"
+            >
+              <span>🛒</span>
+              <span>{cartCount}</span>
+            </button>
             <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="rounded-lg border border-slate-200 p-2 hover:bg-slate-100">
               {mobileMenuOpen ? '✕' : '☰'}
@@ -141,33 +152,34 @@ export default function MarketplaceLayout({ children }) {
           </form>
         </div>
 
-        {/* Mobile slide-out menu */}
+        {/* Mobile slide-down menu */}
         {mobileMenuOpen && (
-          <div className="border-t border-slate-100 bg-white px-4 pb-4 pt-2 md:hidden">
-            <nav className="flex flex-col gap-1 text-sm">
+          <div className="border-t border-slate-100 bg-white px-4 py-3 md:hidden">
+            <div className="flex flex-col gap-2 text-sm">
+              <Link href="/category" className="py-1.5 font-medium hover:text-orange-500">All Products</Link>
+              <Link href="/category?sort=popular" className="py-1.5 font-medium hover:text-orange-500">🔥 Trending Deals</Link>
+              <Link href="/category?sort=discount" className="py-1.5 font-medium hover:text-orange-500">⚡ Flash Sales</Link>
+              <Link href="/track" className="py-1.5 font-medium hover:text-orange-500">📦 Track My Order</Link>
+              <div className="my-1 border-t border-slate-100" />
               {!user ? (
-                <Link href="/login" className="rounded-xl bg-orange-500 px-4 py-3 text-center font-semibold text-white">Login / Signup</Link>
+                <>
+                  <Link href="/login" className="rounded-lg bg-orange-500 py-2 text-center font-semibold text-white">Login / Register</Link>
+                  <Link href="/become-seller" className="rounded-lg border border-slate-200 py-2 text-center font-semibold">Become a Seller</Link>
+                </>
               ) : (
                 <>
-                  <Link href={getDashboardHref()} className="rounded-xl border border-slate-200 px-4 py-3 font-semibold">
-                    👤 {user.name}
-                  </Link>
-                  <Link href="/user/orders" className="rounded-xl border border-slate-100 px-4 py-2.5">📦 My Orders</Link>
-                  <Link href="/user/dashboard?tab=wishlist" className="rounded-xl border border-slate-100 px-4 py-2.5">❤️ Wishlist</Link>
+                  <div className="flex items-center gap-2 py-1">
+                    <span className="font-semibold text-slate-700">{user.name}</span>
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs uppercase text-slate-600">{user.role}</span>
+                  </div>
+                  <Link href={getDashboardHref()} className="rounded-lg border border-slate-200 py-2 text-center font-semibold">My Dashboard</Link>
                   {user.role === 'user' && (
-                    <Link href="/become-seller" className="rounded-xl border border-slate-100 px-4 py-2.5">🏪 Become a Seller</Link>
+                    <Link href="/become-seller" className="rounded-lg border border-orange-200 py-2 text-center font-semibold text-orange-600">Apply as Seller</Link>
                   )}
                   <button onClick={() => { logout(); router.push('/'); }}
-                    className="mt-1 rounded-xl bg-slate-900 px-4 py-3 text-left font-semibold text-white">
-                    Logout
-                  </button>
+                    className="rounded-lg bg-slate-900 py-2 font-semibold text-white">Logout</button>
                 </>
               )}
-              <hr className="my-2" />
-              <Link href="/category" className="px-4 py-2 text-slate-600">All Products</Link>
-              <Link href="/category?category=Electronics" className="px-4 py-2 text-slate-600">📱 Electronics</Link>
-              <Link href="/category?category=Fashion" className="px-4 py-2 text-slate-600">👗 Fashion</Link>
-              <Link href="/category?category=Beauty" className="px-4 py-2 text-slate-600">💄 Beauty</Link>
             </nav>
           </div>
         )}
@@ -199,6 +211,7 @@ export default function MarketplaceLayout({ children }) {
           </div>
         </div>
       </footer>
+      <CartDrawer />
     </div>
   );
 }

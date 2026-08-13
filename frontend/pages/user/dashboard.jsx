@@ -19,9 +19,11 @@ const TABS = [
 
 export default function UserDashboard() {
   const router = useRouter();
-  const { user, token, login, logout, toggleWishlist, wishlist, addToCart } = useStore();
+  const store = useStore() || {};
+  const { user, token, login, logout, toggleWishlist, wishlist = [], addToCart } = store;
   const [tab, setTab] = useState('profile');
   const [ordersCount, setOrdersCount] = useState(0);
+  const [mounted, setMounted] = useState(false);
 
   // Profile form
   const [profile, setProfile] = useState({ name: '', email: '', phone: '' });
@@ -34,7 +36,13 @@ export default function UserDashboard() {
   const [savingPw, setSavingPw] = useState(false);
 
   useEffect(() => {
-    if (!token) {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const activeToken = token || (typeof window !== 'undefined' ? (localStorage.getItem('ob_token') || localStorage.getItem('token')) : null);
+    if (!activeToken) {
       router.push('/login');
       return;
     }
@@ -48,7 +56,7 @@ export default function UserDashboard() {
 
     // Load user orders count
     fetch(`${API_BASE}/orders/my`, {
-      headers: { Authorization: `Bearer ${token}` }
+      headers: { Authorization: `Bearer ${activeToken}` }
     })
       .then((r) => r.json())
       .then((data) => {
@@ -56,7 +64,7 @@ export default function UserDashboard() {
         setOrdersCount(list.length);
       })
       .catch(() => {});
-  }, [user, token]);
+  }, [user, token, mounted]);
 
   const saveProfile = async (e) => {
     e.preventDefault();

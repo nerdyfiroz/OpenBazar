@@ -22,26 +22,33 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    const savedUser = localStorage.getItem('ob_user');
-    const savedToken = localStorage.getItem('ob_token') || localStorage.getItem('token');
-    const savedCart = localStorage.getItem('ob_cart');
-    const savedWishlist = localStorage.getItem('ob_wishlist');
-    const savedCoupon = localStorage.getItem('ob_coupon');
+    try {
+      const savedUser = localStorage.getItem('ob_user');
+      const savedToken = localStorage.getItem('ob_token') || localStorage.getItem('token');
+      const savedCart = localStorage.getItem('ob_cart');
+      const savedWishlist = localStorage.getItem('ob_wishlist');
+      const savedCoupon = localStorage.getItem('ob_coupon');
 
-    if (savedUser) setUser(JSON.parse(savedUser));
-    if (savedToken) setToken(savedToken);
-    if (savedCart) {
-      const parsed = JSON.parse(savedCart);
-      const migrated = Array.isArray(parsed)
-        ? parsed.map((item) => ({
-            ...item,
-            cartKey: item.cartKey || buildCartKey(item)
-          }))
-        : [];
-      setCart(migrated);
+      if (savedUser) setUser(JSON.parse(savedUser));
+      if (savedToken) setToken(savedToken);
+      if (savedCart) {
+        const parsed = JSON.parse(savedCart);
+        const migrated = Array.isArray(parsed)
+          ? parsed.map((item) => ({
+              ...item,
+              cartKey: item.cartKey || buildCartKey(item)
+            }))
+          : [];
+        setCart(migrated);
+      }
+      if (savedWishlist) {
+        const parsedWishlist = JSON.parse(savedWishlist);
+        setWishlist(Array.isArray(parsedWishlist) ? parsedWishlist : []);
+      }
+      if (savedCoupon) setCoupon(JSON.parse(savedCoupon));
+    } catch {
+      // ignore storage parsing error
     }
-    if (savedWishlist) setWishlist(JSON.parse(savedWishlist));
-    if (savedCoupon) setCoupon(JSON.parse(savedCoupon));
   }, []);
 
   useEffect(() => {

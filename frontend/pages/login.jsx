@@ -140,6 +140,13 @@ export default function Login() {
     : '/';
 
   // mode: 'login' | 'register'
+  const [isLogin, setIsLogin] = useState(true);
+  const [message, setMessage] = useState('');
+  const [msgIsError, setMsgIsError] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    name: '', email: '', phone: '', password: '', role: 'user',
+  });
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [phoneSetupData, setPhoneSetupData] = useState({ token: '', phone: '', email: '' });
 

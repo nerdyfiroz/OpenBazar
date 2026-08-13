@@ -3,7 +3,7 @@ const path = require('path');
 
 module.exports = function handler(req, res) {
   try {
-    const logoPath = path.join(process.cwd(), '..', 'logo.png');
+    const logoPath = path.join(process.cwd(), '..', 'new-logo.png');
     const imageBuffer = fs.readFileSync(logoPath);
     const base64 = imageBuffer.toString('base64');
 

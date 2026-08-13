@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
 import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import SmartImage from '../../components/SmartImage';
+import { useStore } from '../../components/StoreProvider';
+import MobileVerificationModal from '../../components/MobileVerificationModal';
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
 const CATEGORIES = [
@@ -35,6 +37,8 @@ const blankFlashForm = {
 };
 
 export default function SellerDashboard() {
+  const { user } = useStore();
+  const [verificationModalOpen, setVerificationModalOpen] = useState(false);
   const [token, setToken] = useState(null);
   const [tab, setTab] = useState('overview'); // overview | products | orders | add | flash
   const [products, setProducts] = useState([]);
@@ -138,6 +142,13 @@ export default function SellerDashboard() {
   const submitProduct = async (e) => {
     e.preventDefault();
     if (!token) return setMsg('Please login as a seller first.');
+
+    if (user && !user.phoneVerified) {
+      setVerificationModalOpen(true);
+      setMsg('📱 Mobile verification is mandatory to post products for sale on OpenBazar.');
+      return;
+    }
+
     setSubmitting(true);
     setMsg('');
     try {
@@ -714,6 +725,15 @@ export default function SellerDashboard() {
         )}
 
       </main>
+
+      {verificationModalOpen && (
+        <MobileVerificationModal
+          isOpen={verificationModalOpen}
+          onClose={() => setVerificationModalOpen(false)}
+          initialPhone={user?.phone || ''}
+          userEmail={user?.email || ''}
+        />
+      )}
     </MarketplaceLayout>
   );
 }

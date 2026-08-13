@@ -51,13 +51,13 @@ export default function FreeMobileVerificationTool() {
               textTransform: 'uppercase',
             }}
           >
-            ⚡ Free Mobile Verification Tool
+            📱 Mandatory Mobile Verification
           </div>
           <h3 style={{ fontSize: 20, fontWeight: 800, margin: '0 0 6px', letterSpacing: '-0.3px' }}>
             Mobile Number Verification Status
           </h3>
           <p style={{ fontSize: 13, color: 'rgba(255, 255, 255, 0.8)', margin: 0, maxWidth: 520, lineHeight: 1.5 }}>
-            All OpenBazar accounts require a verified 11-digit Bangladesh mobile number. Use our 100% free verification tool to verify your mobile number instantly.
+            All OpenBazar buyers and sellers require a verified 11-digit Bangladesh mobile number to place orders or sell products.
           </p>
         </div>
 
@@ -96,7 +96,7 @@ export default function FreeMobileVerificationTool() {
                 transition: 'transform 0.15s ease',
               }}
             >
-              📱 Verify Mobile (Free)
+              📱 Verify Mobile Number
             </button>
           )}
         </div>

@@ -11,6 +11,7 @@ import {
 } from '../utils/bdAddressOptions';
 import SEO from '../components/SEO';
 import OrderCompleteButton from '../components/OrderCompleteButton';
+import MobileVerificationModal from '../components/MobileVerificationModal';
 import { getApiBase } from '../utils/apiBase';
 
 const API_BASE = getApiBase();
@@ -228,6 +229,7 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [orderStatus, setOrderStatus] = useState('idle');
   const [step, setStep] = useState(1); // 1 = Address, 2 = Payment
+  const [showPhoneVerificationModal, setShowPhoneVerificationModal] = useState(false);
 
   const [form, setForm] = useState({
     name: '', email: '', address: '',
@@ -277,6 +279,15 @@ export default function Checkout() {
     e.preventDefault();
     if (orderStatus !== 'idle') return;
     if (!cart.length) { setMessage('Cart is empty.'); return; }
+
+    if (effectiveUser && !effectiveUser.phoneVerified) {
+      setShowPhoneVerificationModal(true);
+      setLoading(false);
+      setOrderStatus('idle');
+      setMessage('📱 Mobile number verification is mandatory to place orders.');
+      setMsgIsError(true);
+      return;
+    }
 
     setLoading(true);
     setOrderStatus('processing');
@@ -795,6 +806,14 @@ export default function Checkout() {
           }
         }
       `}</style>
+      {showPhoneVerificationModal && (
+        <MobileVerificationModal
+          isOpen={showPhoneVerificationModal}
+          onClose={() => setShowPhoneVerificationModal(false)}
+          initialPhone={form.phone || user?.phone || ''}
+          userEmail={user?.email || ''}
+        />
+      )}
     </MarketplaceLayout>
   );
 }

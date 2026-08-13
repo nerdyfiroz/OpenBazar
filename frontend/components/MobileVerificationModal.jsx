@@ -239,19 +239,19 @@ export default function MobileVerificationModal({
               marginBottom: 10,
             }}
           >
-            ⚡ FREE MOBILE VERIFICATION TOOL
+            📱 MANDATORY MOBILE VERIFICATION
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 6px' }}>
             {step === 1 ? 'Verify Your Mobile Number' : 'Enter 6-Digit Code'}
           </h2>
           <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.5 }}>
             {step === 1
-              ? 'Mandatory security step for all OpenBazar accounts. Verified phone numbers unlock all features.'
+              ? 'Required security verification to buy or sell on OpenBazar.'
               : `We sent a code to ${maskedPhone || phone}.`}
           </p>
         </div>
 
-        {/* Free Tool Sandbox Helper Banner */}
+        {/* Test Assistant Helper Banner */}
         {freeOtpHint && (
           <div
             style={{
@@ -268,7 +268,7 @@ export default function MobileVerificationModal({
           >
             <div>
               <div style={{ fontSize: 11, fontWeight: 800, color: '#3730a3', textTransform: 'uppercase' }}>
-                ✨ Free Instant Test Verification Code:
+                ✨ Instant Test Verification Code:
               </div>
               <div style={{ fontSize: 18, fontWeight: 900, color: '#1e1b4b', letterSpacing: 2 }}>
                 {freeOtpHint}

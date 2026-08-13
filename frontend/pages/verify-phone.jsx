@@ -12,8 +12,8 @@ export default function VerifyPhonePage() {
   return (
     <MarketplaceLayout>
       <SEO
-        title="Free Mobile Verification Tool"
-        description="Verify your mobile phone number for free on OpenBazar using our instant OTP verification tool."
+        title="Mobile Verification"
+        description="Verify your mobile phone number on OpenBazar using our instant OTP verification portal."
         canonical="/verify-phone"
       />
 
@@ -31,10 +31,10 @@ export default function VerifyPhonePage() {
               textTransform: 'uppercase',
             }}
           >
-            ⚡ OpenBazar Security Portal
+            📱 OpenBazar Security Portal
           </span>
           <h1 style={{ fontSize: 32, fontWeight: 900, color: '#0f172a', margin: '12px 0 8px', letterSpacing: '-0.5px' }}>
-            Free Mobile Number Verification Tool
+            Mobile Number Verification
           </h1>
           <p style={{ fontSize: 15, color: '#64748b', maxWidth: 560, margin: '0 auto', lineHeight: 1.6 }}>
             OpenBazar mandates phone number verification for all buyers and sellers to ensure a safe, fraud-free marketplace in Bangladesh.

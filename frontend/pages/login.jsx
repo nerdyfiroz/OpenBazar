@@ -5,6 +5,7 @@ import { useStore } from '../components/StoreProvider';
 import SEO from '../components/SEO';
 import { getApiBase } from '../utils/apiBase';
 import PremiumPasswordInput from '../components/PremiumPasswordInput';
+import GoogleSignInButton from '../components/GoogleSignInButton';
 
 const API_BASE = getApiBase();
 
@@ -132,6 +133,11 @@ export default function Login() {
   const router = useRouter();
   const { login } = useStore();
 
+  // Read ?redirect= from URL to restore location after login
+  const redirectTo = (typeof window !== 'undefined' && router.query?.redirect)
+    ? String(router.query.redirect)
+    : '/';
+
   // mode: 'login' | 'register'
   const [isLogin, setIsLogin] = useState(true);
   const [message, setMessage] = useState('');
@@ -181,7 +187,8 @@ export default function Login() {
         setMsgIsError(false);
         setMessage(`Welcome back, ${data.user.name}! Redirecting...`);
         setTimeout(() => {
-          if (data.user.role === 'admin') router.push('/admin/dashboard');
+          if (redirectTo && redirectTo !== '/') router.push(redirectTo);
+          else if (data.user.role === 'admin') router.push('/admin/dashboard');
           else if (data.user.role === 'seller') router.push('/seller/dashboard');
           else router.push('/user/dashboard');
         }, 900);
@@ -383,6 +390,14 @@ export default function Login() {
                   <SubmitBtn label="Create Account" loadingLabel="Creating account…" />
                 </div>
               </form>
+
+              {/* Google Sign-Up divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 4px' }}>
+                <div style={{ flex: 1, height: 1, background: 'rgba(99,102,241,0.15)' }} />
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>OR CONTINUE WITH</span>
+                <div style={{ flex: 1, height: 1, background: 'rgba(99,102,241,0.15)' }} />
+              </div>
+              <GoogleSignInButton redirectTo={redirectTo || '/user/dashboard'} label="Sign up with Google" />
             </div>
           </div>
 
@@ -462,6 +477,14 @@ export default function Login() {
                   <SubmitBtn label="Sign In" loadingLabel="Signing in…" />
                 </div>
               </form>
+
+              {/* Google Sign-In divider */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '18px 0 4px' }}>
+                <div style={{ flex: 1, height: 1, background: 'rgba(99,102,241,0.15)' }} />
+                <span style={{ fontSize: 11, color: '#94a3b8', fontWeight: 700, letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>OR CONTINUE WITH</span>
+                <div style={{ flex: 1, height: 1, background: 'rgba(99,102,241,0.15)' }} />
+              </div>
+              <GoogleSignInButton redirectTo={redirectTo || '/user/dashboard'} label="Sign in with Google" />
             </div>
           </div>
 

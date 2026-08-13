@@ -42,7 +42,10 @@ export default function AdminDashboard() {
     maxUsers: '',
     startsAt: '',
     expiresAt: '',
-    isActive: true
+    isActive: true,
+    isFeatured: false,
+    featuredTitle: 'VIP Promo Code',
+    featuredSubtitle: 'Use promo code below at checkout to unlock instant discounts.'
   });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
@@ -89,7 +92,10 @@ export default function AdminDashboard() {
       maxUsers: '',
       startsAt: '',
       expiresAt: '',
-      isActive: true
+      isActive: true,
+      isFeatured: false,
+      featuredTitle: 'VIP Promo Code',
+      featuredSubtitle: 'Use promo code below at checkout to unlock instant discounts.'
     });
   };
 
@@ -471,7 +477,10 @@ export default function AdminDashboard() {
       maxUsers: couponForm.maxUsers === '' ? null : Number(couponForm.maxUsers),
       startsAt: couponForm.startsAt || undefined,
       expiresAt: couponForm.expiresAt || undefined,
-      isActive: Boolean(couponForm.isActive)
+      isActive: Boolean(couponForm.isActive),
+      isFeatured: Boolean(couponForm.isFeatured),
+      featuredTitle: couponForm.featuredTitle || 'VIP Promo Code',
+      featuredSubtitle: couponForm.featuredSubtitle || 'Use promo code below at checkout to unlock instant discounts.'
     };
 
     try {
@@ -514,8 +523,34 @@ export default function AdminDashboard() {
       maxUsers: coupon.maxUsers ?? '',
       startsAt: toDateTimeLocal(coupon.startsAt),
       expiresAt: toDateTimeLocal(coupon.expiresAt),
-      isActive: Boolean(coupon.isActive)
+      isActive: Boolean(coupon.isActive),
+      isFeatured: Boolean(coupon.isFeatured),
+      featuredTitle: coupon.featuredTitle || 'VIP Promo Code',
+      featuredSubtitle: coupon.featuredSubtitle || 'Use promo code below at checkout to unlock instant discounts.'
     });
+  };
+
+  const toggleFeaturedCoupon = async (couponId, currentFeatured) => {
+    if (!token) return;
+
+    try {
+      const res = await fetch(`${API_BASE}/coupons/admin/${couponId}/feature`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ isFeatured: !currentFeatured })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to update featured banner promo');
+
+      setMessage(data.message || 'Featured banner promo updated successfully');
+      fetchData();
+    } catch (err) {
+      setMessage(err.message || 'Failed to update featured promo');
+    }
   };
 
   const toggleCouponStatus = async (couponId, isActive) => {
@@ -1018,6 +1053,42 @@ export default function AdminDashboard() {
               />
             </div>
 
+            {/* Featured Banner Settings */}
+            <div className="rounded-xl border border-purple-200 bg-purple-50/50 p-3 space-y-3">
+              <label className="inline-flex items-center gap-2 text-sm font-bold text-purple-900 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+                  checked={Boolean(couponForm.isFeatured)}
+                  onChange={(e) => onCouponFormChange('isFeatured', e.target.checked)}
+                />
+                ⭐ Feature as Homepage VIP Promo Code Banner
+              </label>
+
+              {couponForm.isFeatured && (
+                <div className="grid gap-3 sm:grid-cols-2 pt-1">
+                  <div>
+                    <label className="block text-xs font-semibold text-purple-900 mb-1">Banner Title</label>
+                    <input
+                      className="w-full rounded border border-purple-200 bg-white px-3 py-1.5 text-xs"
+                      placeholder="e.g. VIP Promo Code or EID Special"
+                      value={couponForm.featuredTitle}
+                      onChange={(e) => onCouponFormChange('featuredTitle', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-purple-900 mb-1">Banner Subtitle</label>
+                    <input
+                      className="w-full rounded border border-purple-200 bg-white px-3 py-1.5 text-xs"
+                      placeholder="e.g. Use promo code below at checkout to unlock instant discounts."
+                      value={couponForm.featuredSubtitle}
+                      onChange={(e) => onCouponFormChange('featuredSubtitle', e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex flex-wrap items-center gap-3">
               <label className="inline-flex items-center gap-2 text-sm">
                 <input
@@ -1046,6 +1117,7 @@ export default function AdminDashboard() {
                     <th className="py-2 pr-3">Value</th>
                     <th className="py-2 pr-3">Min Order</th>
                     <th className="py-2 pr-3">Used</th>
+                    <th className="py-2 pr-3">VIP Banner</th>
                     <th className="py-2 pr-3">Start</th>
                     <th className="py-2 pr-3">Expires</th>
                     <th className="py-2 pr-3">Status</th>
@@ -1060,11 +1132,30 @@ export default function AdminDashboard() {
                       <td className="py-2 pr-3">{coupon.type === 'percentage' ? `${coupon.value}%` : `৳${Number(coupon.value || 0).toFixed(2)}`}</td>
                       <td className="py-2 pr-3">৳{Number(coupon.minOrderAmount || 0).toFixed(2)}</td>
                       <td className="py-2 pr-3">{coupon.usedCount}{coupon.usageLimit ? ` / ${coupon.usageLimit}` : ''}</td>
+                      <td className="py-2 pr-3">
+                        {coupon.isFeatured ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-bold text-purple-700">
+                            ⭐ Featured
+                          </span>
+                        ) : (
+                          <span className="text-xs text-slate-400">—</span>
+                        )}
+                      </td>
                       <td className="py-2 pr-3">{coupon.startsAt ? new Date(coupon.startsAt).toLocaleString() : '-'}</td>
                       <td className="py-2 pr-3">{coupon.expiresAt ? new Date(coupon.expiresAt).toLocaleString() : '-'}</td>
                       <td className="py-2 pr-3">{coupon.isActive ? 'Active' : 'Inactive'}</td>
                       <td className="py-2 pr-3">
                         <div className="flex flex-wrap gap-2">
+                          <button
+                            className={`rounded border px-2 py-1 text-xs font-bold transition ${
+                              coupon.isFeatured
+                                ? 'border-purple-300 bg-purple-100 text-purple-800 hover:bg-purple-200'
+                                : 'border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100'
+                            }`}
+                            onClick={() => toggleFeaturedCoupon(coupon._id, coupon.isFeatured)}
+                          >
+                            {coupon.isFeatured ? '⭐ Remove Banner' : '⭐ Set Banner Promo'}
+                          </button>
                           <button className="rounded border px-2 py-1 text-xs" onClick={() => startEditCoupon(coupon)}>Edit</button>
                           <button className="rounded border px-2 py-1 text-xs" onClick={() => toggleCouponStatus(coupon._id, !coupon.isActive)}>
                             {coupon.isActive ? 'Deactivate' : 'Activate'}
@@ -1078,7 +1169,7 @@ export default function AdminDashboard() {
                   ))}
                   {!coupons.length && (
                     <tr>
-                      <td className="py-3 text-slate-500" colSpan={9}>No coupons created yet.</td>
+                      <td className="py-3 text-slate-500" colSpan={10}>No coupons created yet.</td>
                     </tr>
                   )}
                 </tbody>

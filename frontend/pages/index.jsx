@@ -159,12 +159,14 @@ export default function Home({
   initialProducts = [],
   initialFlashSale = { status: 'inactive', count: 0, nextEndsAt: null },
   initialSalesAndPreorders = [],
+  initialFeaturedPromo = { code: 'OPEN100', title: 'VIP Promo Code', subtitle: 'Use promo code below at checkout to unlock instant discounts.', type: 'fixed', value: 100 },
 }) {
   const [products, setProducts] = useState(initialProducts);
   const [flashSale, setFlashSale] = useState(initialFlashSale);
   const [flashSaleEndsIn, setFlashSaleEndsIn] = useState('00:00:00');
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [salesAndPreorders, setSalesAndPreorders] = useState(initialSalesAndPreorders);
+  const [featuredPromo, setFeaturedPromo] = useState(initialFeaturedPromo);
   const [copiedCoupon, setCopiedCoupon] = useState(false);
 
   useEffect(() => {
@@ -190,6 +192,15 @@ export default function Home({
         .then((data) => setSalesAndPreorders(Array.isArray(data.products) ? data.products : []))
         .catch(() => setSalesAndPreorders([]));
     }
+
+    fetch(`${API_BASE}/coupons/featured`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data?.code) {
+          setFeaturedPromo(data);
+        }
+      })
+      .catch(() => {});
 
     try {
       const rv = JSON.parse(localStorage.getItem('ob_recently_viewed') || '[]');
@@ -429,15 +440,26 @@ export default function Home({
           </div>
 
           <div className="group relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-900 via-fuchsia-900 to-pink-900 p-6 text-white shadow-md">
-            <span className="text-3xl">✨</span>
-            <h3 className="mt-3 text-xl font-black">VIP Promo Code</h3>
-            <p className="mt-1 text-xs text-pink-200 leading-relaxed">Use promo code below at checkout to unlock instant discounts.</p>
+            <div className="flex items-center justify-between">
+              <span className="text-3xl">✨</span>
+              {featuredPromo?.value && (
+                <span className="rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-black text-amber-300 backdrop-blur-xs">
+                  {featuredPromo.type === 'percentage' ? `${featuredPromo.value}% OFF` : `৳${featuredPromo.value} OFF`}
+                </span>
+              )}
+            </div>
+            <h3 className="mt-3 text-xl font-black">{featuredPromo?.title || 'VIP Promo Code'}</h3>
+            <p className="mt-1 text-xs text-pink-200 leading-relaxed">
+              {featuredPromo?.subtitle || 'Use promo code below at checkout to unlock instant discounts.'}
+            </p>
             <div className="mt-4 flex items-center gap-2">
-              <span className="rounded-lg bg-white/20 px-3 py-1 text-xs font-mono font-bold tracking-wider">OPEN100</span>
+              <span className="rounded-xl bg-white/20 px-3.5 py-1.5 text-xs font-mono font-black tracking-wider text-white border border-white/20">
+                {featuredPromo?.code || 'OPEN100'}
+              </span>
               <button
                 type="button"
-                onClick={() => copyCoupon('OPEN100')}
-                className="rounded-lg bg-white px-3 py-1 text-xs font-bold text-slate-900 hover:bg-slate-100 transition"
+                onClick={() => copyCoupon(featuredPromo?.code || 'OPEN100')}
+                className="rounded-xl bg-white px-3.5 py-1.5 text-xs font-extrabold text-slate-900 shadow hover:bg-slate-100 hover:scale-105 active:scale-95 transition duration-150"
               >
                 {copiedCoupon ? 'Copied! ✓' : 'Copy'}
               </button>
@@ -555,10 +577,11 @@ export async function getServerSideProps() {
     }
   };
 
-  const [productsRes, flashSaleRes, salesRes] = await Promise.all([
+  const [productsRes, flashSaleRes, salesRes, promoRes] = await Promise.all([
     fetchJson(`${API_BASE}/products?limit=24`),
     fetchJson(`${API_BASE}/dashboard/flash-sale`),
     fetchJson(`${API_BASE}/products?saleType=sale,preorder&limit=8`),
+    fetchJson(`${API_BASE}/coupons/featured`),
   ]);
 
   const initialProducts = Array.isArray(productsRes?.products)
@@ -571,11 +594,20 @@ export async function getServerSideProps() {
 
   const initialSalesAndPreorders = Array.isArray(salesRes?.products) ? salesRes.products : [];
 
+  const initialFeaturedPromo = promoRes?.code ? promoRes : {
+    code: 'OPEN100',
+    title: 'VIP Promo Code',
+    subtitle: 'Use promo code below at checkout to unlock instant discounts.',
+    type: 'fixed',
+    value: 100
+  };
+
   return {
     props: {
       initialProducts,
       initialFlashSale,
       initialSalesAndPreorders,
+      initialFeaturedPromo,
     },
   };
 }

@@ -21,6 +21,9 @@ const CouponSchema = new mongoose.Schema({
   // Auto-tracked: number of distinct users who have used this coupon
   usersUsedCount: { type: Number, default: 0, min: 0 },
   isActive: { type: Boolean, default: true },
+  isFeatured: { type: Boolean, default: false },
+  featuredTitle: { type: String, default: 'VIP Promo Code' },
+  featuredSubtitle: { type: String, default: 'Use promo code below at checkout to unlock instant discounts.' },
   createdAt: { type: Date, default: Date.now }
 });
 

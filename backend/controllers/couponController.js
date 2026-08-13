@@ -26,7 +26,10 @@ function normalizeCouponPayload(body = {}) {
     // Dates are optional — model defaults apply if omitted
     startsAt: body.startsAt || undefined,
     expiresAt: body.expiresAt || undefined,
-    isActive: body.isActive === undefined ? true : Boolean(body.isActive)
+    isActive: body.isActive === undefined ? true : Boolean(body.isActive),
+    isFeatured: Boolean(body.isFeatured),
+    featuredTitle: body.featuredTitle !== undefined ? String(body.featuredTitle).trim() : 'VIP Promo Code',
+    featuredSubtitle: body.featuredSubtitle !== undefined ? String(body.featuredSubtitle).trim() : 'Use promo code below at checkout to unlock instant discounts.'
   };
 }
 
@@ -209,6 +212,13 @@ exports.updateCoupon = async (req, res) => {
     coupon.perUserLimit = payload.perUserLimit;
     coupon.maxUsers = payload.maxUsers;
     coupon.isActive = payload.isActive;
+    coupon.isFeatured = payload.isFeatured;
+    coupon.featuredTitle = payload.featuredTitle || 'VIP Promo Code';
+    coupon.featuredSubtitle = payload.featuredSubtitle || 'Use promo code below at checkout to unlock instant discounts.';
+
+    if (payload.isFeatured) {
+      await Coupon.updateMany({ _id: { $ne: coupon._id } }, { $set: { isFeatured: false } });
+    }
 
     await coupon.save();
     res.json({ message: 'Coupon updated', coupon });
@@ -228,6 +238,92 @@ exports.deleteCoupon = async (req, res) => {
 };
 
 /**
+ * Admin endpoint to toggle or set a coupon as the featured homepage banner promo
+ */
+exports.setFeaturedCoupon = async (req, res) => {
+  try {
+    const coupon = await Coupon.findById(req.params.id);
+    if (!coupon) return res.status(404).json({ message: 'Coupon not found' });
+
+    const isFeatured = req.body.isFeatured !== undefined ? Boolean(req.body.isFeatured) : !coupon.isFeatured;
+
+    if (isFeatured) {
+      // Unset all other featured coupons so only one is featured at a time
+      await Coupon.updateMany({ _id: { $ne: coupon._id } }, { $set: { isFeatured: false } });
+    }
+
+    coupon.isFeatured = isFeatured;
+    if (req.body.featuredTitle) coupon.featuredTitle = String(req.body.featuredTitle).trim();
+    if (req.body.featuredSubtitle) coupon.featuredSubtitle = String(req.body.featuredSubtitle).trim();
+
+    await coupon.save();
+    res.json({ message: isFeatured ? 'Coupon set as featured banner promo' : 'Coupon removed from featured banner', coupon });
+  } catch (err) {
+    res.status(500).json({ message: 'Server error' });
+  }
+};
+
+/**
+ * Public endpoint — gets the currently featured promo code for the homepage banner.
+ * Falls back to the highest value active coupon or a default.
+ */
+exports.getFeaturedCoupon = async (req, res) => {
+  try {
+    const now = new Date();
+
+    // 1. Look for explicitly featured active coupon
+    let coupon = await Coupon.findOne({
+      isFeatured: true,
+      isActive: true,
+      $or: [{ startsAt: { $exists: false } }, { startsAt: null }, { startsAt: { $lte: now } }],
+      $and: [
+        { $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gte: now } }] }
+      ]
+    }).lean();
+
+    // 2. If no featured coupon, pick the latest active coupon
+    if (!coupon) {
+      coupon = await Coupon.findOne({
+        isActive: true,
+        $or: [{ startsAt: { $exists: false } }, { startsAt: null }, { startsAt: { $lte: now } }],
+        $and: [
+          { $or: [{ expiresAt: { $exists: false } }, { expiresAt: null }, { expiresAt: { $gte: now } }] }
+        ]
+      }).sort({ value: -1, createdAt: -1 }).lean();
+    }
+
+    if (!coupon) {
+      return res.json({
+        code: 'OPEN100',
+        title: 'VIP Promo Code',
+        subtitle: 'Use promo code below at checkout to unlock instant discounts.',
+        type: 'fixed',
+        value: 100,
+        minOrderAmount: 0
+      });
+    }
+
+    return res.json({
+      code: coupon.code,
+      title: coupon.featuredTitle || 'VIP Promo Code',
+      subtitle: coupon.featuredSubtitle || 'Use promo code below at checkout to unlock instant discounts.',
+      type: coupon.type,
+      value: coupon.value,
+      minOrderAmount: coupon.minOrderAmount || 0,
+      maxDiscount: coupon.maxDiscount || null
+    });
+  } catch (err) {
+    return res.status(500).json({
+      code: 'OPEN100',
+      title: 'VIP Promo Code',
+      subtitle: 'Use promo code below at checkout to unlock instant discounts.',
+      type: 'fixed',
+      value: 100
+    });
+  }
+};
+
+/**
  * Public endpoint — safe fields only, no admin data.
  * Returns active, not-yet-expired coupons for the cart eligibility UI.
  */
@@ -237,7 +333,7 @@ exports.listPublicCoupons = async (req, res) => {
     const allCoupons = await Coupon.find({
       $or: [{ isActive: true }, { isActive: { $exists: false } }],
     })
-      .select('code type value maxDiscount minOrderAmount minItemCount startsAt expiresAt isActive')
+      .select('code type value maxDiscount minOrderAmount minItemCount startsAt expiresAt isActive isFeatured featuredTitle featuredSubtitle')
       .sort({ minOrderAmount: 1 })
       .lean();
 

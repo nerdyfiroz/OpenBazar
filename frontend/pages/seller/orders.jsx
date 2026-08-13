@@ -5,7 +5,7 @@ import { useStore } from '../../components/StoreProvider';
 import SEO from '../../components/SEO';
 import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import SmartImage from '../../components/SmartImage';
-import { getApiBase } from '../../utils/apiBase';
+import { getApiBase, safeJson } from '../../utils/apiBase';
 
 const API_BASE = getApiBase();
 
@@ -160,7 +160,7 @@ function SellerOrderCard({ order: o, token, isOpen, onToggle, onMsg, onReload })
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: nextStatus })
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.message || 'Failed');
       setStatus(nextStatus);
       onMsg(`✅ Order status updated to ${nextStatus.toUpperCase()}`);
@@ -180,7 +180,7 @@ function SellerOrderCard({ order: o, token, isOpen, onToggle, onMsg, onReload })
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(tracking)
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.message || 'Failed');
       onMsg('✅ Courier tracking info updated successfully!');
       onReload?.();

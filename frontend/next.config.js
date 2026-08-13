@@ -1,8 +1,8 @@
 /** @type {import('next').NextConfig} */
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'https://openbazar.onrender.com/api';
 
 // Extract just the origin (protocol + host + port) from the API base URL
-let backendOrigin = 'http://localhost:5000';
+let backendOrigin = 'https://openbazar.onrender.com';
 try {
   const url = new URL(API_BASE);
   backendOrigin = url.origin;
@@ -81,18 +81,20 @@ const nextConfig = {
     ],
   },
 
-  // Proxy /uploads/* and /api/auth/* requests to the backend so requests load without CORS or 404 issues
+  // Proxy /uploads/* and all /api/* routes (with Next.js internal pages/api taking priority)
   async rewrites() {
-    return [
-      {
-        source: '/uploads/:path*',
-        destination: `${backendOrigin}/uploads/:path*`,
-      },
-      {
-        source: '/api/auth/:path*',
-        destination: `${backendOrigin}/api/auth/:path*`,
-      },
-    ];
+    return {
+      fallback: [
+        {
+          source: '/uploads/:path*',
+          destination: `${backendOrigin}/uploads/:path*`,
+        },
+        {
+          source: '/api/:path*',
+          destination: `${backendOrigin}/api/:path*`,
+        },
+      ],
+    };
   },
 };
 

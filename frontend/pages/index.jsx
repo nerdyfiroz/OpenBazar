@@ -5,8 +5,9 @@ import ProductCard from '../components/ProductCard';
 import { resolveImageSrc } from '../utils/resolveImageSrc';
 import SmartImage from '../components/SmartImage';
 import SEO from '../components/SEO';
+import { getApiBase } from '../utils/apiBase';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+const API_BASE = getApiBase();
 
 function getSiteUrl() {
   const base = process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://open-bazar.me';
@@ -565,7 +566,7 @@ export default function Home({
 }
 
 export async function getServerSideProps() {
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || 'http://localhost:5000/api';
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || process.env.API_BASE || 'https://openbazar.onrender.com/api';
 
   const fetchJson = async (url) => {
     try {

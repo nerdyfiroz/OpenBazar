@@ -3,8 +3,9 @@ import MarketplaceLayout from '../../components/MarketplaceLayout';
 import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import SmartImage from '../../components/SmartImage';
 import { useStore } from '../../components/StoreProvider';
+import { getApiBase, safeJson } from '../../utils/apiBase';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+const API_BASE = getApiBase();
 const CATEGORIES = [
   'Electronics', 'Fashion', 'Beauty', 'Home & Living',
   'Sports', 'Toys', 'Grocery', 'Food'
@@ -295,7 +296,7 @@ export default function SellerDashboard() {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus })
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.message || 'Failed to update order status');
       setMsg(`✅ Order status updated to ${newStatus}`);
       setOrders((prev) => prev.map((o) => (o._id === orderId ? { ...o, status: newStatus } : o)));
@@ -827,7 +828,7 @@ function OrderRow({ order: o, token, apiBase, statusColor, onMsg, onStatusUpdate
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(tracking)
       });
-      const data = await res.json();
+      const data = await safeJson(res);
       if (!res.ok) throw new Error(data.message || 'Failed');
       onMsg('✅ Tracking info saved successfully!');
     } catch (err) {

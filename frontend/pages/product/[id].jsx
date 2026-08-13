@@ -8,8 +8,9 @@ import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import VerifiedBadge from '../../components/VerifiedBadge';
 import SmartImage from '../../components/SmartImage';
 import SEO from '../../components/SEO';
+import { getApiBase } from '../../utils/apiBase';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+const API_BASE = getApiBase();
 
 function getSiteUrl() {
   const base = process.env.NEXT_PUBLIC_FRONTEND_URL || process.env.NEXT_PUBLIC_SITE_URL || 'https://open-bazar.me';

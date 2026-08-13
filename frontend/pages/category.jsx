@@ -3,8 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import MarketplaceLayout from '../components/MarketplaceLayout';
 import ProductCard from '../components/ProductCard';
 import SEO from '../components/SEO';
+import { getApiBase } from '../utils/apiBase';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+const API_BASE = getApiBase();
 
 function buildParams(query) {
   const params = new URLSearchParams();

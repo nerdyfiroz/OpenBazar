@@ -44,3 +44,19 @@ export function getApiBase() {
 export function getBackendOrigin() {
   return getApiBase().replace(/\/api\/?$/, '');
 }
+
+/**
+ * Bulletproof JSON response parser that prevents "<!DOCTYPE" syntax crashes.
+ */
+export async function safeJson(res) {
+  try {
+    const contentType = res.headers?.get?.('content-type') || '';
+    if (contentType.includes('application/json')) {
+      return await res.json();
+    }
+    const text = await res.text();
+    return { message: text || `Server response (${res.status})` };
+  } catch {
+    return { message: `Request error (${res.status || 500})` };
+  }
+}

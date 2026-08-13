@@ -4,8 +4,9 @@ import Link from 'next/link';
 import MarketplaceLayout from '../../components/MarketplaceLayout';
 import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import SmartImage from '../../components/SmartImage';
+import { getApiBase } from '../../utils/apiBase';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000/api';
+const API_BASE = getApiBase();
 
 const STATUS_STEPS = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
 

@@ -58,6 +58,7 @@ export default function MarketplaceLayout({ children }) {
                 alt="OpenBazar"
                 fill
                 priority
+                unoptimized
                 sizes="(max-width: 768px) 144px, (max-width: 1024px) 176px, 208px"
                 className="object-contain"
               />

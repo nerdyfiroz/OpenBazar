@@ -17,6 +17,16 @@ const nextConfig = {
   poweredByHeader: false,
   compress: true,
   images: {
+    localPatterns: [
+      {
+        pathname: '/**',
+        search: '?*',
+      },
+      {
+        pathname: '/**',
+        search: '',
+      },
+    ],
     remotePatterns: [
       // Allow Cloudinary-hosted images (when backend stores uploads in Cloudinary)
       {

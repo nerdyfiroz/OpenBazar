@@ -353,18 +353,41 @@ router.post('/login', async (req, res) => {
     const match = await bcrypt.compare(password, user.password);
     if (!match) return res.status(400).json({ message: 'Invalid credentials', canResetPassword: true });
     if (user.isBlocked) return res.status(403).json({ message: 'Account blocked or pending approval' });
+
+    // Mandatory Phone Verification for ALL users
+    const hasVerifiedPhone = user.phone && user.phone.trim() && user.phoneVerified;
+    if (!hasVerifiedPhone) {
+      const setupToken = jwt.sign(
+        { id: user._id, purpose: 'phone_setup' },
+        process.env.JWT_SECRET,
+        { expiresIn: '10m' }
+      );
+      return res.json({
+        needsPhone: true,
+        setupToken,
+        user: { id: user._id, name: user.name, email: user.email, phone: user.phone || '', phoneVerified: false },
+      });
+    }
+
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user._id, name: user.name, role: user.role, isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge) } });
+    res.json({
+      token,
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        phoneVerified: true,
+        role: user.role,
+        isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge)
+      }
+    });
   } catch (err) {
     res.status(500).json({ message: 'Server error' });
   }
 });
 
 // ── Google OAuth ─────────────────────────────────────────────────────────────
-// POST /api/auth/google
-// Body: { credential: <Google ID token> }
-// Verifies with Google; if user already has a verified phone → full JWT.
-// Otherwise → { needsPhone: true, setupToken (10 min) }.
 router.post('/google', async (req, res) => {
   try {
     const { credential } = req.body;
@@ -403,18 +426,18 @@ router.post('/google', async (req, res) => {
       await user.save();
     }
 
-    // Phone gate — user must verify phone before getting a real JWT
+    // Phone gate — mandatory for all users
     const hasVerifiedPhone = user.phone && user.phone.trim() && user.phoneVerified;
     if (!hasVerifiedPhone) {
       const setupToken = jwt.sign(
-        { id: user._id, purpose: 'google_phone_setup' },
+        { id: user._id, purpose: 'phone_setup' },
         process.env.JWT_SECRET,
         { expiresIn: '10m' }
       );
       return res.json({
         needsPhone: true,
         setupToken,
-        user: { name: user.name, email: user.email },
+        user: { name: user.name, email: user.email, phone: user.phone || '', phoneVerified: false },
       });
     }
 
@@ -422,7 +445,7 @@ router.post('/google', async (req, res) => {
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     return res.json({
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge) },
+      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, phoneVerified: true, role: user.role, isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge) },
     });
   } catch (err) {
     console.error('[Google Auth]', err.message);
@@ -430,134 +453,131 @@ router.post('/google', async (req, res) => {
   }
 });
 
-// ── Send phone OTP (Google setup flow) ───────────────────────────────────────
-// POST /api/auth/google/phone/send-otp
-// Body: { setupToken, phone }
-// Validates setupToken + phone, generates & hashes OTP, sends SMS.
-// Rate-limited: 1 OTP send per minute per user.
-router.post('/google/phone/send-otp', [
-  body('setupToken').notEmpty().withMessage('Setup token is required'),
-  body('phone').notEmpty().withMessage('Phone number is required'),
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ message: errors.array()[0].msg });
-
+// ── Send Phone OTP (Universal & Free Tool Enabled) ───────────────────────────
+// POST /api/auth/phone/send-otp (and /google/phone/send-otp alias)
+const handleSendPhoneOtp = async (req, res) => {
   try {
     const { setupToken, phone } = req.body;
+    let userId = null;
 
-    // 1. Verify setupToken
-    let decoded;
-    try {
-      decoded = jwt.verify(setupToken, process.env.JWT_SECRET);
-    } catch {
-      return res.status(401).json({ message: 'Setup session expired. Please sign in with Google again.' });
-    }
-    if (decoded.purpose !== 'google_phone_setup') {
-      return res.status(401).json({ message: 'Invalid setup token.' });
+    // Support setupToken OR Authorization header
+    if (setupToken) {
+      try {
+        const decoded = jwt.verify(setupToken, process.env.JWT_SECRET);
+        if (!['phone_setup', 'google_phone_setup'].includes(decoded.purpose)) {
+          return res.status(401).json({ message: 'Invalid setup token.' });
+        }
+        userId = decoded.id;
+      } catch {
+        return res.status(401).json({ message: 'Session expired. Please log in again.' });
+      }
+    } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.id;
+      } catch {
+        return res.status(401).json({ message: 'Invalid authorization token.' });
+      }
+    } else {
+      return res.status(400).json({ message: 'Setup token or Authorization is required' });
     }
 
-    // 2. Validate phone format
-    const rawPhone = String(phone).replace(/\s+/g, '').trim();
+    const rawPhone = String(phone || '').replace(/\s+/g, '').trim();
     if (!isValidBdPhone(rawPhone)) {
-      return res.status(400).json({ message: 'Please enter a valid Bangladesh mobile number (e.g. 01XXXXXXXXX).' });
+      return res.status(400).json({ message: 'Please enter a valid 11-digit Bangladesh mobile number (e.g. 01712345678).' });
     }
 
-    // 3. Load user
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found.' });
     if (user.isBlocked) return res.status(403).json({ message: 'Account blocked. Contact support.' });
 
-    // 4. Rate-limit: prevent sending more than 1 OTP per minute
+    // Rate-limit 1 min cooldown
     if (user.phoneOtpExpiresAt) {
-      const secondsLeft = Math.ceil((new Date(user.phoneOtpExpiresAt).getTime() - Date.now()) / 1000);
-      const cooldownEnds = new Date(user.phoneOtpExpiresAt).getTime() - (9 * 60 * 1000); // 1 min after send
+      const cooldownEnds = new Date(user.phoneOtpExpiresAt).getTime() - (9 * 60 * 1000);
       if (Date.now() < cooldownEnds) {
-        return res.status(429).json({ message: 'Please wait a moment before requesting another code.' });
+        return res.status(429).json({ message: 'Please wait 1 minute before requesting another code.' });
       }
     }
 
-    // 5. Generate 6-digit OTP
     const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
 
-    // 6. Hash OTP with SHA-256 (fast, sufficient for short-lived codes)
-    const otpHash = require('crypto').createHash('sha256').update(otp).digest('hex');
-
-    // 7. Normalise + store
-    const normalizedPhone = normalizeBdPhone(rawPhone);
-    user.phone = rawPhone;                                    // store raw (01XXXXXXXXX)
+    user.phone = rawPhone;
     user.phoneVerified = false;
     user.phoneOtpHash = otpHash;
-    user.phoneOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+    user.phoneOtpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
     user.phoneOtpAttempts = 0;
     await user.save();
 
-    // 8. Send SMS — OTP is NEVER returned to the client or logged in production
-    const { maskedPhone } = await sendPhoneOtp(rawPhone, otp);
+    const { maskedPhone, isFreeToolMode, freeOtpHint } = await sendPhoneOtp(rawPhone, otp);
 
     res.json({
       success: true,
       message: `Verification code sent to ${maskedPhone}`,
       maskedPhone,
+      isFreeToolMode,
+      freeOtpHint: freeOtpHint || undefined,
     });
   } catch (err) {
-    console.error('[Google SendOTP]', err.message);
-    res.status(500).json({ message: 'Failed to send verification code. Please try again.' });
+    console.error('[SendPhoneOTP]', err.message);
+    res.status(500).json({ message: err.message || 'Failed to send verification code.' });
   }
-});
+};
 
-// ── Verify phone OTP (Google setup flow) ─────────────────────────────────────
-// POST /api/auth/google/phone/verify
-// Body: { setupToken, phone, otp }
-// Verifies OTP, marks phone as verified, issues 7-day JWT.
-router.post('/google/phone/verify', [
-  body('setupToken').notEmpty().withMessage('Setup token is required'),
-  body('phone').notEmpty().withMessage('Phone number is required'),
-  body('otp').isLength({ min: 6, max: 6 }).withMessage('OTP must be 6 digits'),
-], async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) return res.status(400).json({ message: errors.array()[0].msg });
+router.post('/phone/send-otp', handleSendPhoneOtp);
+router.post('/google/phone/send-otp', handleSendPhoneOtp);
 
+// ── Verify Phone OTP (Universal & Free Tool Enabled) ─────────────────────────
+// POST /api/auth/phone/verify (and /google/phone/verify alias)
+const handleVerifyPhoneOtp = async (req, res) => {
   try {
     const { setupToken, phone, otp } = req.body;
+    let userId = null;
 
-    // 1. Verify setupToken
-    let decoded;
-    try {
-      decoded = jwt.verify(setupToken, process.env.JWT_SECRET);
-    } catch {
-      return res.status(401).json({ message: 'Setup session expired. Please sign in with Google again.' });
-    }
-    if (decoded.purpose !== 'google_phone_setup') {
-      return res.status(401).json({ message: 'Invalid setup token.' });
+    if (setupToken) {
+      try {
+        const decoded = jwt.verify(setupToken, process.env.JWT_SECRET);
+        if (!['phone_setup', 'google_phone_setup'].includes(decoded.purpose)) {
+          return res.status(401).json({ message: 'Invalid setup token.' });
+        }
+        userId = decoded.id;
+      } catch {
+        return res.status(401).json({ message: 'Session expired. Please log in again.' });
+      }
+    } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
+      try {
+        const token = req.headers.authorization.split(' ')[1];
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        userId = decoded.id;
+      } catch {
+        return res.status(401).json({ message: 'Invalid authorization token.' });
+      }
+    } else {
+      return res.status(400).json({ message: 'Setup token or Authorization is required' });
     }
 
-    // 2. Validate phone format
-    const rawPhone = String(phone).replace(/\s+/g, '').trim();
+    const rawPhone = String(phone || '').replace(/\s+/g, '').trim();
     if (!isValidBdPhone(rawPhone)) {
       return res.status(400).json({ message: 'Please enter a valid Bangladesh mobile number.' });
     }
 
-    // 3. Load user
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(userId);
     if (!user) return res.status(404).json({ message: 'User not found.' });
     if (user.isBlocked) return res.status(403).json({ message: 'Account blocked. Contact support.' });
 
-    // 4. Guard: must have an OTP record
     if (!user.phoneOtpHash || !user.phoneOtpExpiresAt) {
-      return res.status(400).json({ message: 'No verification code found. Please request a new code.' });
+      return res.status(400).json({ message: 'No verification code found. Please request a code.' });
     }
 
-    // 5. Check attempt limit (max 3)
     if (user.phoneOtpAttempts >= 3) {
-      // Clear record to force resend
       user.phoneOtpHash = '';
       user.phoneOtpExpiresAt = null;
       user.phoneOtpAttempts = 0;
       await user.save();
-      return res.status(429).json({ message: 'Too many attempts. Please request a new code.' });
+      return res.status(429).json({ message: 'Too many failed attempts. Please request a new code.' });
     }
 
-    // 6. Check expiry
     if (new Date() > user.phoneOtpExpiresAt) {
       user.phoneOtpHash = '';
       user.phoneOtpExpiresAt = null;
@@ -566,43 +586,52 @@ router.post('/google/phone/verify', [
       return res.status(400).json({ message: 'This code has expired. Please request a new code.' });
     }
 
-    // 7. Verify phone matches (prevent OTP reuse against a different number)
     if (user.phone !== rawPhone) {
-      return res.status(400).json({ message: 'Phone number does not match. Please request a new code.' });
+      return res.status(400).json({ message: 'Phone number mismatch. Please request a code for this number.' });
     }
 
-    // 8. Hash-compare OTP
-    const submittedHash = require('crypto').createHash('sha256').update(String(otp)).digest('hex');
+    const submittedHash = crypto.createHash('sha256').update(String(otp || '')).digest('hex');
     if (submittedHash !== user.phoneOtpHash) {
       user.phoneOtpAttempts = (user.phoneOtpAttempts || 0) + 1;
       await user.save();
       const remaining = 3 - user.phoneOtpAttempts;
       return res.status(400).json({
         message: remaining > 0
-          ? `Invalid verification code. ${remaining} attempt${remaining !== 1 ? 's' : ''} remaining.`
-          : 'Too many attempts. Please request a new code.',
+          ? `Invalid code. ${remaining} attempt${remaining !== 1 ? 's' : ''} left.`
+          : 'Too many failed attempts. Please request a new code.',
       });
     }
 
-    // 9. ✅ OTP correct — mark phone verified and clear OTP fields
+    // Success! Mark phone verified
     user.phoneVerified = true;
     user.phoneOtpHash = '';
     user.phoneOtpExpiresAt = null;
     user.phoneOtpAttempts = 0;
     await user.save();
 
-    // 10. Issue real 7-day JWT
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     return res.json({
       success: true,
+      message: 'Mobile number verified successfully!',
       token,
-      user: { id: user._id, name: user.name, email: user.email, role: user.role, isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge) },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        phoneVerified: true,
+        role: user.role,
+        isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge)
+      },
     });
   } catch (err) {
-    console.error('[Google VerifyOTP]', err.message);
+    console.error('[VerifyPhoneOTP]', err.message);
     res.status(500).json({ message: 'Verification failed. Please try again.' });
   }
-});
+};
+
+router.post('/phone/verify', handleVerifyPhoneOtp);
+router.post('/google/phone/verify', handleVerifyPhoneOtp);
 
 // Seller onboarding and verification subscription
 router.get('/seller-verification-fee', authenticate, async (req, res) => {

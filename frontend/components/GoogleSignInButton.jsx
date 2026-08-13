@@ -194,6 +194,8 @@ function PhoneOtpModal({ userName, userEmail, setupToken, onDone, onCancel }) {
   /* ── Validate Bangladesh phone ── */
   const isValidPhone = (p) => /^01[3-9]\d{8}$/.test(p.replace(/\s+/g, '').trim());
 
+  const [freeOtpHint, setFreeOtpHint] = useState('');
+
   /* ── Step 1: Send OTP ── */
   const sendOtp = async (e) => {
     e?.preventDefault();
@@ -213,6 +215,7 @@ function PhoneOtpModal({ userName, userEmail, setupToken, onDone, onCancel }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || 'Failed to send code.');
       setMaskedPhone(data.maskedPhone || `+880••••••${clean.slice(-2)}`);
+      if (data.freeOtpHint) setFreeOtpHint(data.freeOtpHint);
       setStep('otp');
       startCooldown();
     } catch (err) {
@@ -384,10 +387,32 @@ function PhoneOtpModal({ userName, userEmail, setupToken, onDone, onCancel }) {
             <h2 style={{ margin: '0 0 6px', fontSize: 21, fontWeight: 850, color: '#1e1b4b', textAlign: 'center', letterSpacing: '-0.3px' }}>
               Enter Verification Code
             </h2>
-            <p style={{ margin: '0 0 24px', fontSize: 13, color: '#64748b', textAlign: 'center', lineHeight: 1.6 }}>
-              We sent a 6-digit code to<br />
-              <strong style={{ color: '#1e1b4b' }}>{maskedPhone}</strong>
-            </p>
+            {freeOtpHint && (
+              <div style={{
+                background: 'linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%)',
+                border: '1.5px solid #a5b4fc', borderRadius: 12,
+                padding: '10px 12px', marginBottom: 12,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              }}>
+                <div>
+                  <div style={{ fontSize: 10, fontWeight: 800, color: '#3730a3', textTransform: 'uppercase' }}>
+                    ✨ Free Instant Verification Code:
+                  </div>
+                  <div style={{ fontSize: 16, fontWeight: 900, color: '#1e1b4b', letterSpacing: 2 }}>
+                    {freeOtpHint}
+                  </div>
+                </div>
+                <button
+                  type="button" onClick={() => setOtp(freeOtpHint)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 6, background: '#4f46e5',
+                    color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer',
+                  }}
+                >
+                  Auto-Fill
+                </button>
+              </div>
+            )}
 
             <form onSubmit={verifyOtp} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <OtpBoxes value={otp} onChange={(v) => { setOtp(v); setVerifyError(''); }} />

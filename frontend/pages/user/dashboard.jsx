@@ -7,6 +7,7 @@ import { resolveImageSrc } from '../../utils/resolveImageSrc';
 import SmartImage from '../../components/SmartImage';
 import SEO from '../../components/SEO';
 import PremiumPasswordInput from '../../components/PremiumPasswordInput';
+import FreeMobileVerificationTool from '../../components/FreeMobileVerificationTool';
 import { getApiBase } from '../../utils/apiBase';
 const API_BASE = getApiBase();
 
@@ -102,6 +103,9 @@ export default function UserDashboard() {
             </button>
           ))}
         </div>
+
+        {/* Free Mobile Verification Banner & Tool */}
+        <FreeMobileVerificationTool />
 
         {/* ── Profile Tab ── */}
         {tab === 'profile' && (

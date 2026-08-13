@@ -6,6 +6,7 @@ import SEO from '../components/SEO';
 import { getApiBase } from '../utils/apiBase';
 import PremiumPasswordInput from '../components/PremiumPasswordInput';
 import GoogleSignInButton from '../components/GoogleSignInButton';
+import MobileVerificationModal from '../components/MobileVerificationModal';
 
 const API_BASE = getApiBase();
 
@@ -139,13 +140,8 @@ export default function Login() {
     : '/';
 
   // mode: 'login' | 'register'
-  const [isLogin, setIsLogin] = useState(true);
-  const [message, setMessage] = useState('');
-  const [msgIsError, setMsgIsError] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [form, setForm] = useState({
-    name: '', email: '', phone: '', password: '', role: 'user',
-  });
+  const [showPhoneModal, setShowPhoneModal] = useState(false);
+  const [phoneSetupData, setPhoneSetupData] = useState({ token: '', phone: '', email: '' });
 
   /* ── Existing auth logic — UNCHANGED ─────────────────────────────────── */
   const formatAuthMessage = (message) => {
@@ -181,6 +177,17 @@ export default function Login() {
       });
       const data = await readResponse(res);
       if (!res.ok) throw new Error(data.message || 'Authentication failed');
+
+      if (data.needsPhone && data.setupToken) {
+        setPhoneSetupData({
+          token: data.setupToken,
+          phone: form.phone || data.user?.phone || '',
+          email: form.email || data.user?.email || '',
+        });
+        setShowPhoneModal(true);
+        setLoading(false);
+        return;
+      }
 
       if (isLogin) {
         login({ nextUser: data.user, nextToken: data.token });
@@ -656,6 +663,22 @@ export default function Login() {
             outline-offset: 2px;
           }
         `}</style>
+
+        {showPhoneModal && (
+          <MobileVerificationModal
+            isOpen={showPhoneModal}
+            onClose={() => setShowPhoneModal(false)}
+            setupToken={phoneSetupData.token}
+            initialPhone={phoneSetupData.phone}
+            userEmail={phoneSetupData.email}
+            onSuccess={(data) => {
+              if (data.token && data.user) {
+                login({ nextUser: data.user, nextToken: data.token });
+                router.push(redirectTo || '/user/dashboard');
+              }
+            }}
+          />
+        )}
 
       </main>
     </MarketplaceLayout>

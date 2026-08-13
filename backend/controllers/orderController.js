@@ -1,8 +1,7 @@
-// Order Controller: Place order, view, admin/seller/user logic
-// Upgrade: Add payment API, courier API, order notifications, etc.
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const Coupon = require('../models/Coupon');
+const User = require('../models/User');
 const { verifyPayment } = require('../services/paymentGateway');
 const { validateCouponDoc } = require('./couponController');
 
@@ -67,8 +66,14 @@ exports.placeOrder = async (req, res) => {
     const guestCustomer = buildGuestCustomer(paymentInfo);
     const shippingAddress = buildShippingAddress(paymentInfo);
 
+    // Mobile phone number is strictly mandatory for all orders (cart/checkout)
+    const customerPhone = String(paymentInfo.phone || guestCustomer.phone || (buyer && buyer.phone) || '').replace(/\s+/g, '').trim();
+    if (!customerPhone) {
+      return res.status(400).json({ message: 'Mobile phone number is required to place an order.' });
+    }
+
     if (!buyer) {
-      if (!guestCustomer.name || !guestCustomer.email || !guestCustomer.phone) {
+      if (!guestCustomer.name || !guestCustomer.email) {
         return res.status(400).json({ message: 'Guest checkout requires name, email, and phone number' });
       }
     }
@@ -145,9 +150,11 @@ exports.placeOrder = async (req, res) => {
 
     const order = new Order({
       user: buyer?._id || null,
-      guestCustomer: buyer
-        ? { name: buyer.name, email: buyer.email, phone: buyer.phone }
-        : guestCustomer,
+      guestCustomer: {
+        name: buyer ? (buyer.name || paymentInfo.customerName || '') : guestCustomer.name,
+        email: buyer ? (buyer.email || paymentInfo.email || '') : guestCustomer.email,
+        phone: customerPhone
+      },
       shippingAddress,
       products: orderProducts,
       subtotal,
@@ -158,6 +165,7 @@ exports.placeOrder = async (req, res) => {
       paymentMethod,
       paymentInfo: {
         ...paymentInfo,
+        phone: customerPhone,
         provider: paymentVerification.provider,
         paymentReference: paymentVerification.reference,
         paymentStatus: paymentVerification.paymentStatus
@@ -174,6 +182,11 @@ exports.placeOrder = async (req, res) => {
       commission: 0 // Calculated later
     });
     await order.save();
+
+    // If logged in buyer profile doesn't have phone saved, save it now
+    if (buyer?._id && (!buyer.phone || !buyer.phone.trim())) {
+      await User.findByIdAndUpdate(buyer._id, { phone: customerPhone });
+    }
 
     if (appliedCoupon?.code) {
       // Increment total usage count

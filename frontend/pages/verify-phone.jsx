@@ -37,7 +37,7 @@ export default function VerifyPhonePage() {
             Mobile Number Verification
           </h1>
           <p style={{ fontSize: 15, color: '#64748b', maxWidth: 560, margin: '0 auto', lineHeight: 1.6 }}>
-            OpenBazar mandates phone number verification for all buyers and sellers to ensure a safe, fraud-free marketplace in Bangladesh.
+            Verify your mobile phone number on OpenBazar for enhanced account security, quick order tracking, and fraud protection.
           </p>
         </div>
 

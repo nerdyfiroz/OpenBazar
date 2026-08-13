@@ -237,14 +237,14 @@ export default function MobileVerificationModal({
               marginBottom: 10,
             }}
           >
-            📱 MANDATORY MOBILE VERIFICATION
+            📱 MOBILE PHONE VERIFICATION
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: '#0f172a', margin: '0 0 6px' }}>
             {step === 1 ? 'Verify Your Mobile Number' : 'Enter 6-Digit Code'}
           </h2>
           <p style={{ fontSize: 13, color: '#64748b', margin: 0, lineHeight: 1.5 }}>
             {step === 1
-              ? 'Required security verification to buy or sell on OpenBazar.'
+              ? 'Verify your mobile number for account security and SMS updates.'
               : `We sent a code to ${maskedPhone || phone}.`}
           </p>
         </div>

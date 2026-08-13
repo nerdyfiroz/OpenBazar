@@ -280,11 +280,15 @@ export default function Checkout() {
     if (orderStatus !== 'idle') return;
     if (!cart.length) { setMessage('Cart is empty.'); return; }
 
-    if (effectiveUser && !effectiveUser.phoneVerified) {
-      setShowPhoneVerificationModal(true);
-      setLoading(false);
-      setOrderStatus('idle');
-      setMessage('📱 Mobile number verification is mandatory to place orders.');
+    const cleanPhone = String(form.phone || '').replace(/\s+/g, '').trim();
+    if (!cleanPhone) {
+      setMessage('Mobile phone number is required to place your order.');
+      setMsgIsError(true);
+      return;
+    }
+    const isValidPhone = /^01[3-9]\d{8}$/.test(cleanPhone) || /^(\+?8801|8801|01)[3-9]\d{8}$/.test(cleanPhone);
+    if (!isValidPhone) {
+      setMessage('Please enter a valid 11-digit Bangladesh mobile phone number (e.g. 01712345678).');
       setMsgIsError(true);
       return;
     }
@@ -555,6 +559,13 @@ export default function Checkout() {
                 onClick={() => {
                   if (!form.name || !form.phone || !form.email || !form.division || !form.district || !form.upazila || !form.area || !form.address) {
                     setMessage('Please fill in all required address fields.');
+                    setMsgIsError(true);
+                    return;
+                  }
+                  const cleanPhone = String(form.phone || '').replace(/\s+/g, '').trim();
+                  const isValidPhone = /^01[3-9]\d{8}$/.test(cleanPhone) || /^(\+?8801|8801|01)[3-9]\d{8}$/.test(cleanPhone);
+                  if (!isValidPhone) {
+                    setMessage('Please enter a valid 11-digit Bangladesh mobile phone number (e.g. 01712345678).');
                     setMsgIsError(true);
                     return;
                   }

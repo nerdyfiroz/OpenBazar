@@ -90,12 +90,6 @@ export default function BecomeSellerPage() {
     e.preventDefault();
     if (!token) return;
 
-    if (user && !user.phoneVerified) {
-      setModalOpen(true);
-      setMessage('📱 Mobile verification is mandatory to become a seller on OpenBazar.');
-      return;
-    }
-
     const isExistingSeller = statusData?.role === 'seller';
     
     if (!isExistingSeller && (!applicationFiles.idDocument || !applicationFiles.photo || !applicationFiles.faceVerification)) {

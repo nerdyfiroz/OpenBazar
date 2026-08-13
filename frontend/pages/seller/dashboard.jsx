@@ -143,12 +143,6 @@ export default function SellerDashboard() {
     e.preventDefault();
     if (!token) return setMsg('Please login as a seller first.');
 
-    if (user && !user.phoneVerified) {
-      setVerificationModalOpen(true);
-      setMsg('📱 Mobile verification is mandatory to post products for sale on OpenBazar.');
-      return;
-    }
-
     setSubmitting(true);
     setMsg('');
     try {

@@ -354,21 +354,7 @@ router.post('/login', async (req, res) => {
     if (!match) return res.status(400).json({ message: 'Invalid credentials', canResetPassword: true });
     if (user.isBlocked) return res.status(403).json({ message: 'Account blocked or pending approval' });
 
-    // Mandatory Phone Verification for ALL users
-    const hasVerifiedPhone = user.phone && user.phone.trim() && user.phoneVerified;
-    if (!hasVerifiedPhone) {
-      const setupToken = jwt.sign(
-        { id: user._id, purpose: 'phone_setup' },
-        process.env.JWT_SECRET,
-        { expiresIn: '10m' }
-      );
-      return res.json({
-        needsPhone: true,
-        setupToken,
-        user: { id: user._id, name: user.name, email: user.email, phone: user.phone || '', phoneVerified: false },
-      });
-    }
-
+    // Phone verification is optional - issue standard JWT token directly
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.json({
       token,
@@ -376,8 +362,8 @@ router.post('/login', async (req, res) => {
         id: user._id,
         name: user.name,
         email: user.email,
-        phone: user.phone,
-        phoneVerified: true,
+        phone: user.phone || '',
+        phoneVerified: Boolean(user.phoneVerified),
         role: user.role,
         isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge)
       }
@@ -426,26 +412,19 @@ router.post('/google', async (req, res) => {
       await user.save();
     }
 
-    // Phone gate — mandatory for all users
-    const hasVerifiedPhone = user.phone && user.phone.trim() && user.phoneVerified;
-    if (!hasVerifiedPhone) {
-      const setupToken = jwt.sign(
-        { id: user._id, purpose: 'phone_setup' },
-        process.env.JWT_SECRET,
-        { expiresIn: '10m' }
-      );
-      return res.json({
-        needsPhone: true,
-        setupToken,
-        user: { name: user.name, email: user.email, phone: user.phone || '', phoneVerified: false },
-      });
-    }
-
-    // Fully verified — issue real JWT
+    // Phone verification is optional - issue standard JWT token directly
     const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     return res.json({
       token,
-      user: { id: user._id, name: user.name, email: user.email, phone: user.phone, phoneVerified: true, role: user.role, isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge) },
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone || '',
+        phoneVerified: Boolean(user.phoneVerified),
+        role: user.role,
+        isSellerVerifiedBadge: Boolean(user.isSellerVerifiedBadge)
+      },
     });
   } catch (err) {
     console.error('[Google Auth]', err.message);
